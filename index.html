@@ -91,10 +91,23 @@
         <div class="station-grid" id="stationGrid"></div>
 
         <div class="manual-station" id="manualStationWrap">
-          <label for="stationSelect">手动选择当前区域内的站点</label>
-          <select id="stationSelect">
-            <option value="">选择站点…</option>
-          </select>
+          <div class="manual-station__label">
+            <label for="stationPickerButton">选择上车站点</label>
+            <small>可多选</small>
+          </div>
+          <div class="station-picker" id="stationPicker">
+            <button class="station-picker__button" id="stationPickerButton" type="button" aria-expanded="false" aria-controls="stationPickerMenu">
+              <span id="stationPickerValue">选择站点…</span>
+              <span class="station-picker__chevron">⌄</span>
+            </button>
+            <div class="station-picker__menu" id="stationPickerMenu" hidden>
+              <div class="station-picker__search">
+                <span>⌕</span>
+                <input id="stationPickerSearch" type="search" placeholder="搜索站点" autocomplete="off" />
+              </div>
+              <div class="station-picker__options" id="stationPickerOptions"></div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -124,6 +137,6 @@
     </footer>
   </div>
 
-  <script src="app-v2.js" defer></script>
+  <script src="app-v2.js?v=20260819-picker" defer></script>
 </body>
 </html>

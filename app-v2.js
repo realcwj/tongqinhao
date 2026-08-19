@@ -8,9 +8,10 @@ const state = {
   stops: [],
   userPosition: null,
   currentRegion: null,
-  selectedStop: null,
+  selectedStops: [],
   destinationRegion: null,
   nearbyStops: [],
+  availableStops: [],
   locationRequested: false,
 };
 
@@ -51,7 +52,12 @@ function cacheElements() {
   els.stationGrid = document.querySelector("#stationGrid");
   els.nearbyEmpty = document.querySelector("#nearbyEmpty");
   els.retryLocationButton = document.querySelector("#retryLocationButton");
-  els.stationSelect = document.querySelector("#stationSelect");
+  els.stationPicker = document.querySelector("#stationPicker");
+  els.stationPickerButton = document.querySelector("#stationPickerButton");
+  els.stationPickerValue = document.querySelector("#stationPickerValue");
+  els.stationPickerMenu = document.querySelector("#stationPickerMenu");
+  els.stationPickerSearch = document.querySelector("#stationPickerSearch");
+  els.stationPickerOptions = document.querySelector("#stationPickerOptions");
   els.selectedContext = document.querySelector("#selectedContext");
   els.departureDirectionNote = document.querySelector("#departureDirectionNote");
   els.departureList = document.querySelector("#departureList");
@@ -65,9 +71,16 @@ function bindEvents() {
   els.regionButtons.forEach((button) => {
     button.addEventListener("click", () => setCurrentRegion(button.dataset.region, false));
   });
-  els.stationSelect.addEventListener("change", () => {
-    const stop = state.stops.find((item) => item.stopId === Number(els.stationSelect.value));
-    if (stop) selectStop(stop, true);
+  els.stationPickerButton.addEventListener("click", toggleStationPicker);
+  els.stationPickerSearch.addEventListener("input", () => renderStationPickerOptions(els.stationPickerSearch.value));
+  els.stationPickerOptions.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-picker-stop]");
+    if (!option) return;
+    const stop = state.availableStops.find((item) => item.key === option.dataset.pickerStop);
+    if (stop) toggleSelectedStop(stop);
+  });
+  document.addEventListener("click", (event) => {
+    if (!els.stationPicker.contains(event.target)) closeStationPicker();
   });
   els.departureList.addEventListener("click", (event) => {
     const toggle = event.target.closest("[data-route-toggle]");
@@ -92,19 +105,39 @@ function buildStationCatalog(routes) {
       if (!map.has(stopId)) {
         map.set(stopId, {
           stopId,
-          name: String(stop.name || "未命名站点").trim(),
+          name: cleanStopName(stop.name),
+          stopIds: new Set([stopId]),
           lat,
           lng,
           region: inferRegion(stop),
           boardingDirections: new Set(),
         });
       }
+      const station = map.get(stopId);
+      station.stopIds.add(stopId);
+      const cleanedName = cleanStopName(stop.name);
+      if (cleanedName.length < station.name.length) station.name = cleanedName;
       if (direction && String(stop.kind) === "1") {
         map.get(stopId).boardingDirections.add(direction);
       }
     });
   });
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+  const merged = new Map();
+  for (const stop of map.values()) {
+    const key = `${stop.region}|${stop.name}`;
+    if (!merged.has(key)) {
+      merged.set(key, { ...stop, key, stopIds: new Set(stop.stopIds) });
+    } else {
+      const target = merged.get(key);
+      stop.stopIds.forEach((id) => target.stopIds.add(id));
+      stop.boardingDirections.forEach((direction) => target.boardingDirections.add(direction));
+    }
+  }
+  return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+}
+
+function cleanStopName(name) {
+  return String(name || "未命名站点").trim().replace(/[\s]*[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]+[\s]*$/u, "").trim();
 }
 
 function getRouteDirection(route) {
@@ -184,9 +217,8 @@ function refreshStationsForRegion() {
   if (!state.currentRegion) return;
   const direction = `${state.currentRegion}-${state.destinationRegion}`;
   const available = state.stops.filter((stop) => stop.region === state.currentRegion && stop.boardingDirections.has(direction));
-  els.stationSelect.innerHTML = `<option value="">选择${regionLabel(state.currentRegion)}站点…</option>${available
-    .map((stop) => `<option value="${stop.stopId}">${escapeHtml(stop.name)}</option>`)
-    .join("")}`;
+  state.availableStops = available;
+  renderStationPickerOptions();
 
   if (state.userPosition) {
     state.nearbyStops = available
@@ -199,12 +231,14 @@ function refreshStationsForRegion() {
   }
   renderNearbyStations();
 
-  const selectedStillValid = state.selectedStop
-    && state.selectedStop.region === state.currentRegion
-    && state.selectedStop.boardingDirections.has(direction);
-  if (state.nearbyStops.length) selectStop(state.nearbyStops[0], false);
-  else if (!selectedStillValid) clearSelectedStop();
-  else selectStop(state.selectedStop, false);
+  const selectedStillValid = state.selectedStops.filter((stop) => stop.region === state.currentRegion && stop.boardingDirections.has(direction));
+  state.selectedStops = selectedStillValid;
+  if (!state.selectedStops.length && state.nearbyStops.length) selectStop(state.nearbyStops[0], false);
+  else {
+    updateStationPickerValue();
+    renderNearbyStations();
+    renderDepartures();
+  }
 }
 
 function renderNearbyStations() {
@@ -212,39 +246,85 @@ function renderNearbyStations() {
   els.nearbyEmpty.hidden = !state.userPosition || state.nearbyStops.length > 0;
   els.nearbyEmpty.querySelector("h3").textContent = `${regionLabel(state.currentRegion)}附近暂无站点`;
   state.nearbyStops.forEach((stop) => {
-    document.querySelector(`[data-nearby-stop="${stop.stopId}"]`)?.addEventListener("click", () => selectStop(stop, false));
+    document.querySelector(`[data-nearby-stop="${CSS.escape(stop.key)}"]`)?.addEventListener("click", () => selectStop(stop, false));
   });
 }
 
 function stationCardHtml(stop, closest) {
-  return `<button class="station-card${state.selectedStop?.stopId === stop.stopId ? " is-selected" : ""}" type="button" data-nearby-stop="${stop.stopId}">
+  return `<button class="station-card${state.selectedStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-nearby-stop="${stop.key}">
     <div class="station-card__top"><span class="station-kind ${stop.region === "2" ? "station-kind--macau" : ""}">${regionLabel(stop.region)}站点</span><span class="distance">${closest ? "最近 · " : ""}${formatDistance(stop.distanceKm)}</span></div>
     <h3>${escapeHtml(stop.name)}</h3>
-    <div class="station-card__bottom"><span>站点编号 ${stop.stopId}</span><span class="station-card__check">✓</span></div>
+    <div class="station-card__bottom"><span>可查询该站点班次</span><span class="station-card__check">✓</span></div>
   </button>`;
 }
 
 function selectStop(stop, scroll) {
-  state.selectedStop = stop;
-  els.stationSelect.value = String(stop.stopId);
-  document.querySelectorAll(".station-card").forEach((card) => card.classList.toggle("is-selected", Number(card.dataset.nearbyStop) === stop.stopId));
+  state.selectedStops = [stop];
+  updateStationPickerValue();
+  renderNearbyStations();
   renderDepartures();
   if (scroll) document.querySelector(".departures-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function clearSelectedStop() {
-  state.selectedStop = null;
-  els.stationSelect.value = "";
+  state.selectedStops = [];
+  updateStationPickerValue();
   els.selectedContext.textContent = "请选择上车站点";
   els.departureList.innerHTML = "";
   els.departureEmpty.hidden = false;
+}
+
+function toggleStationPicker() {
+  const isOpen = els.stationPickerButton.getAttribute("aria-expanded") === "true";
+  if (isOpen) closeStationPicker();
+  else {
+    els.stationPicker.classList.add("is-open");
+    els.stationPickerButton.setAttribute("aria-expanded", "true");
+    els.stationPickerMenu.hidden = false;
+    els.stationPickerSearch.focus();
+  }
+}
+
+function closeStationPicker() {
+  els.stationPicker.classList.remove("is-open");
+  els.stationPickerButton.setAttribute("aria-expanded", "false");
+  els.stationPickerMenu.hidden = true;
+}
+
+function toggleSelectedStop(stop) {
+  const exists = state.selectedStops.some((item) => item.key === stop.key);
+  state.selectedStops = exists
+    ? state.selectedStops.filter((item) => item.key !== stop.key)
+    : [...state.selectedStops, stop];
+  updateStationPickerValue();
+  renderStationPickerOptions(els.stationPickerSearch.value);
+  renderNearbyStations();
+  renderDepartures();
+}
+
+function updateStationPickerValue() {
+  if (!state.selectedStops.length) {
+    els.stationPickerValue.textContent = "选择站点…";
+    return;
+  }
+  els.stationPickerValue.textContent = state.selectedStops.length === 1
+    ? state.selectedStops[0].name
+    : `已选择 ${state.selectedStops.length} 个站点`;
+}
+
+function renderStationPickerOptions(query = "") {
+  const normalizedQuery = query.trim().toLocaleLowerCase("zh-CN");
+  const options = state.availableStops.filter((stop) => !normalizedQuery || stop.name.toLocaleLowerCase("zh-CN").includes(normalizedQuery));
+  els.stationPickerOptions.innerHTML = options.length
+    ? options.map((stop) => `<button class="station-picker__option${state.selectedStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-picker-stop="${escapeHtml(stop.key)}"><span class="station-picker__check">✓</span><span>${escapeHtml(stop.name)}</span></button>`).join("")
+    : `<div class="station-picker__empty">没有匹配的站点</div>`;
 }
 
 function renderDepartures() {
   if (state.currentRegion && els.departureDirectionNote) {
     els.departureDirectionNote.innerHTML = `${regionLabel(state.currentRegion)}上车 · 前往 <strong>${regionLabel(state.destinationRegion)}</strong>`;
   }
-  if (!state.data || !state.selectedStop || !state.currentRegion || !state.destinationRegion) {
+  if (!state.data || !state.selectedStops.length || !state.currentRegion || !state.destinationRegion) {
     els.selectedContext.textContent = state.currentRegion ? "请选择上车站点" : "请选择当前所在区域和上车站点";
     els.departureList.innerHTML = "";
     els.departureEmpty.hidden = false;
@@ -253,24 +333,30 @@ function renderDepartures() {
 
   const nowMinutes = currentMinutes();
   const departures = [];
+  const seenDepartures = new Set();
   (state.data.routes || []).forEach((route) => {
     if (getRouteDirection(route) !== `${state.currentRegion}-${state.destinationRegion}`) return;
     (route.stops || []).forEach((boardingStop, boardingIndex) => {
-      if (Number(boardingStop.stop_id) !== state.selectedStop.stopId) return;
+      const selectedStop = state.selectedStops.find((stop) => stop.stopIds.has(Number(boardingStop.stop_id)));
+      if (!selectedStop) return;
       if (String(boardingStop.kind) !== "1") return;
       if (inferRegion(boardingStop) !== state.currentRegion) return;
       const departureMinutes = parseTime(boardingStop.time);
       if (departureMinutes == null) return;
+      const departureKey = `${route.id}-${boardingStop.time}`;
+      if (seenDepartures.has(departureKey)) return;
       const allowedStops = allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, state.destinationRegion);
       if (!allowedStops.length) return;
       const isNextDay = departureMinutes < nowMinutes;
       const minutesUntil = isNextDay ? departureMinutes + 1440 - nowMinutes : departureMinutes - nowMinutes;
-      departures.push({ route, boardingStop, boardingIndex, allowedStops, isNextDay, minutesUntil });
+      seenDepartures.add(departureKey);
+      departures.push({ route, boardingStop, boardingIndex, allowedStops, isNextDay, minutesUntil, selectedStop });
     });
   });
   departures.sort((a, b) => a.minutesUntil - b.minutesUntil);
 
-  els.selectedContext.innerHTML = `从 <strong>${escapeHtml(state.selectedStop.name)}</strong> 出发 · ${regionLabel(state.currentRegion)} → ${regionLabel(state.destinationRegion)} · ${departures.length} 个班次`;
+  const selectedNames = state.selectedStops.map((stop) => escapeHtml(stop.name)).join("、");
+  els.selectedContext.innerHTML = `从 <strong>${selectedNames}</strong> 出发 · ${regionLabel(state.currentRegion)} → ${regionLabel(state.destinationRegion)} · ${departures.length} 个班次`;
   els.departureEmpty.hidden = departures.length > 0;
   els.departureList.innerHTML = departures.slice(0, MAX_DEPARTURES).map(departureHtml).join("");
 }
