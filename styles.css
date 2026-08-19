@@ -140,7 +140,6 @@ select:focus { border-color: var(--mint-strong); box-shadow: 0 0 0 3px rgba(57, 
 .route-toggle { display: inline-flex; align-items: center; gap: 10px; border: 0; border-radius: 8px; padding: 8px 10px; color: var(--ink-soft); background: #f3f6f9; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .route-toggle span:last-child { color: var(--mint-dark); font-size: 16px; line-height: 1; }
 .route-details { border-top: 1px solid var(--line); padding: 18px 20px 22px 124px; background: #fbfcfe; }
-.route-rule { margin-bottom: 18px; color: var(--mint-dark); font-size: 10px; line-height: 1.7; }
 .route-timeline { margin: 0; padding: 0; list-style: none; }
 .timeline-stop { display: grid; grid-template-columns: 52px 14px 1fr; gap: 10px; min-height: 54px; color: var(--muted); }
 .timeline-stop time { padding-top: 1px; font-size: 10px; font-weight: 700; }

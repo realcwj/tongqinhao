@@ -268,7 +268,6 @@ function allowedDropOffStops(stops, boardingIndex, currentRegion, destinationReg
 function departureHtml(item, index) {
   const detailsId = `route-details-${item.route.id}-${item.boardingStop.stop_id}-${index}`;
   const status = vehicleStatus(item.route.stops, new Date(), item.isNextDay);
-  const destinationNames = item.allowedStops.map((stop) => escapeHtml(stop.name));
   const departureText = item.minutesUntil === 0 ? "即将发车" : `${item.minutesUntil} 分钟后`;
   const timeLabel = `${item.isNextDay ? "次日 " : ""}${item.boardingStop.time || "--:--"}`;
   return `<article class="departure-card departure-card--expanded${index === 0 ? " is-next" : ""}">
@@ -279,7 +278,6 @@ function departureHtml(item, index) {
       <button class="route-toggle" type="button" data-route-toggle aria-expanded="${index === 0}" aria-controls="${detailsId}"><span>站点列表</span><span>${index === 0 ? "−" : "+"}</span></button>
     </div>
     <div class="route-details" id="${detailsId}" ${index === 0 ? "" : "hidden"}>
-      <div class="route-rule">可下车：${destinationNames.join(" · ")}</div>
       <ol class="route-timeline">${routeTimelineHtml(item.route.stops, item.boardingIndex, item.allowedStops)}</ol>
     </div>
   </article>`;
