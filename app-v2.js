@@ -83,6 +83,7 @@ function bindEvents() {
 function buildStationCatalog(routes) {
   const map = new Map();
   routes.forEach((route) => {
+    const direction = getRouteDirection(route);
     (route.stops || []).forEach((stop) => {
       const stopId = Number(stop.stop_id);
       const lat = Number(stop.y);
@@ -95,11 +96,25 @@ function buildStationCatalog(routes) {
           lat,
           lng,
           region: inferRegion(stop),
+          boardingDirections: new Set(),
         });
+      }
+      if (direction && String(stop.kind) === "1") {
+        map.get(stopId).boardingDirections.add(direction);
       }
     });
   });
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+}
+
+function getRouteDirection(route) {
+  const stops = route.stops || [];
+  if (stops.length < 2) return null;
+  const boardingStops = stops.filter((stop) => String(stop.kind) === "1");
+  const dropOffStops = stops.filter((stop) => String(stop.kind) === "2");
+  const origin = inferRegion(boardingStops[0] || stops[0]);
+  const destination = inferRegion(dropOffStops[dropOffStops.length - 1] || stops[stops.length - 1]);
+  return origin !== destination ? `${origin}-${destination}` : null;
 }
 
 function requestLocation(force = false) {
@@ -167,7 +182,8 @@ function setCurrentRegion(region, automatic) {
 
 function refreshStationsForRegion() {
   if (!state.currentRegion) return;
-  const available = state.stops.filter((stop) => stop.region === state.currentRegion);
+  const direction = `${state.currentRegion}-${state.destinationRegion}`;
+  const available = state.stops.filter((stop) => stop.region === state.currentRegion && stop.boardingDirections.has(direction));
   els.stationSelect.innerHTML = `<option value="">选择${regionLabel(state.currentRegion)}站点…</option>${available
     .map((stop) => `<option value="${stop.stopId}">${escapeHtml(stop.name)}</option>`)
     .join("")}`;
@@ -183,7 +199,9 @@ function refreshStationsForRegion() {
   }
   renderNearbyStations();
 
-  const selectedStillValid = state.selectedStop && state.selectedStop.region === state.currentRegion;
+  const selectedStillValid = state.selectedStop
+    && state.selectedStop.region === state.currentRegion
+    && state.selectedStop.boardingDirections.has(direction);
   if (state.nearbyStops.length) selectStop(state.nearbyStops[0], false);
   else if (!selectedStillValid) clearSelectedStop();
   else selectStop(state.selectedStop, false);
@@ -236,6 +254,7 @@ function renderDepartures() {
   const nowMinutes = currentMinutes();
   const departures = [];
   (state.data.routes || []).forEach((route) => {
+    if (getRouteDirection(route) !== `${state.currentRegion}-${state.destinationRegion}`) return;
     (route.stops || []).forEach((boardingStop, boardingIndex) => {
       if (Number(boardingStop.stop_id) !== state.selectedStop.stopId) return;
       if (String(boardingStop.kind) !== "1") return;
