@@ -133,6 +133,18 @@ h2 { margin-top: 8px; font-size: 26px; letter-spacing: -.045em; }
 .direction-option.is-selected .direction-option__check { opacity: 1; }
 .section-description { margin: -10px 0 19px; color: var(--muted); font-size: 11px; }
 
+.quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.quick-option { display: flex; align-items: center; gap: 13px; border: 1px solid #d8e0ea; border-radius: 15px; padding: 15px 18px; color: var(--ink); background: linear-gradient(135deg, #fbfdff, #f3f8fb); text-align: left; transition: .2s; }
+.quick-option:hover, .quick-option:active { transform: translateY(-2px); border-color: var(--mint-strong); box-shadow: 0 12px 30px rgba(29, 37, 55, .08); }
+.quick-option__flag { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: #bd7542; background: #fff2e8; font-size: 18px; font-weight: 800; }
+.quick-option__flag--macau { color: #7164bd; background: #f1efff; }
+.quick-option strong, .quick-option small { display: block; }
+.quick-option strong { font-size: 14px; }
+.quick-option small { margin-top: 3px; color: var(--muted); font-size: 10px; }
+.quick-option__arrow { margin-left: auto; color: var(--mint-dark); font-size: 19px; }
+
+.manual-station--dropoff { margin-top: 12px; }
+.manual-station--dropoff .station-picker__button { border-style: dashed; }
 .departures-section { margin-bottom: 0; }
 .section-heading--departures { margin-bottom: 16px; }
 .selected-context { margin-bottom: 17px; color: var(--ink-soft); font-size: 11px; }
@@ -246,6 +258,7 @@ h2 { margin-top: 8px; font-size: 26px; letter-spacing: -.045em; }
   .station-picker { width: 100%; }
   .station-picker__menu { position: fixed; top: auto; right: 16px; bottom: 16px; left: 16px; width: auto; }
   .direction-toggle { grid-template-columns: 1fr; }
+  .quick-actions { grid-template-columns: 1fr; }
   .departure-card__summary { grid-template-columns: 70px 1fr; gap: 13px; padding: 14px; }
   .departure-card__countdown { grid-column: 2; min-width: auto; text-align: left; }
   .route-toggle { grid-column: 1 / -1; justify-content: space-between; width: 100%; }

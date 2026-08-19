@@ -44,6 +44,28 @@
     </header>
 
     <main class="main-content">
+      <section class="section-block quick-section" aria-labelledby="quickTitle">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">00 / QUICK PICK</span>
+            <h2 id="quickTitle">快速选择</h2>
+          </div>
+          <span class="ai-badge"><span>✦</span> 一键直达</span>
+        </div>
+        <div class="quick-actions">
+          <button type="button" class="quick-option" data-quick="university-to-uma">
+            <span class="quick-option__flag quick-option__flag--hengqin">琴</span>
+            <span><strong>琴澳大学城 → 澳大</strong><small>澳门新街坊 / 荔枝湾 → 澳大</small></span>
+            <span class="quick-option__arrow">→</span>
+          </button>
+          <button type="button" class="quick-option" data-quick="uma-to-university">
+            <span class="quick-option__flag quick-option__flag--macau">澳</span>
+            <span><strong>澳大 → 琴澳大学城</strong><small>澳大 → 澳门新街坊 / 荔枝湾</small></span>
+            <span class="quick-option__arrow">→</span>
+          </button>
+        </div>
+      </section>
+
       <section class="section-block region-section" aria-labelledby="regionTitle">
         <div class="section-heading">
           <div>
@@ -106,6 +128,26 @@
                 <input id="stationPickerSearch" type="search" placeholder="搜索站点" autocomplete="off" />
               </div>
               <div class="station-picker__options" id="stationPickerOptions"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="manual-station manual-station--dropoff" id="manualDropOffWrap" hidden>
+          <div class="manual-station__label">
+            <label for="dropOffPickerButton">选择下车站点</label>
+            <small>默认全部 · 可多选</small>
+          </div>
+          <div class="station-picker" id="dropOffPicker">
+            <button class="station-picker__button" id="dropOffPickerButton" type="button" aria-expanded="false" aria-controls="dropOffPickerMenu">
+              <span id="dropOffPickerValue">全部站点…</span>
+              <span class="station-picker__chevron">⌄</span>
+            </button>
+            <div class="station-picker__menu" id="dropOffPickerMenu" hidden>
+              <div class="station-picker__search">
+                <span>⌕</span>
+                <input id="dropOffPickerSearch" type="search" placeholder="搜索站点" autocomplete="off" />
+              </div>
+              <div class="station-picker__options" id="dropOffPickerOptions"></div>
             </div>
           </div>
         </div>

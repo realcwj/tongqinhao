@@ -12,6 +12,8 @@ const state = {
   destinationRegion: null,
   nearbyStops: [],
   availableStops: [],
+  selectedDropOffStops: [],
+  availableDropOffStops: [],
   locationRequested: false,
 };
 
@@ -58,6 +60,14 @@ function cacheElements() {
   els.stationPickerMenu = document.querySelector("#stationPickerMenu");
   els.stationPickerSearch = document.querySelector("#stationPickerSearch");
   els.stationPickerOptions = document.querySelector("#stationPickerOptions");
+  els.manualDropOffWrap = document.querySelector("#manualDropOffWrap");
+  els.dropOffPicker = document.querySelector("#dropOffPicker");
+  els.dropOffPickerButton = document.querySelector("#dropOffPickerButton");
+  els.dropOffPickerValue = document.querySelector("#dropOffPickerValue");
+  els.dropOffPickerMenu = document.querySelector("#dropOffPickerMenu");
+  els.dropOffPickerSearch = document.querySelector("#dropOffPickerSearch");
+  els.dropOffPickerOptions = document.querySelector("#dropOffPickerOptions");
+  els.quickButtons = [...document.querySelectorAll("[data-quick]")];
   els.selectedContext = document.querySelector("#selectedContext");
   els.departureDirectionNote = document.querySelector("#departureDirectionNote");
   els.departureList = document.querySelector("#departureList");
@@ -70,6 +80,9 @@ function bindEvents() {
   els.retryLocationButton.addEventListener("click", () => requestLocation(true));
   els.regionButtons.forEach((button) => {
     button.addEventListener("click", () => setCurrentRegion(button.dataset.region, false));
+  });
+  els.quickButtons.forEach((button) => {
+    button.addEventListener("click", () => quickSelect(button.dataset.quick));
   });
   els.stationPickerButton.addEventListener("click", toggleStationPicker);
   els.stationPickerSearch.addEventListener("input", () => renderStationPickerOptions(els.stationPickerSearch.value));
@@ -85,6 +98,19 @@ function bindEvents() {
   });
   document.addEventListener("click", (event) => {
     if (!els.stationPicker.contains(event.target)) closeStationPicker();
+    if (!els.dropOffPicker.contains(event.target)) closeDropOffPicker();
+  });
+  els.dropOffPickerButton.addEventListener("click", toggleDropOffPicker);
+  els.dropOffPickerSearch.addEventListener("input", () => renderDropOffPickerOptions(els.dropOffPickerSearch.value));
+  els.dropOffPickerOptions.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-dropoff-stop]");
+    if (!option) return;
+    const stop = state.availableDropOffStops.find((item) => item.key === option.dataset.dropoffStop);
+    if (!stop) return;
+    const clickedCheck = event.target.closest(".station-picker__check") || event.target.closest(".station-picker__option") === option && event.offsetX <= 34;
+    if (clickedCheck) event.stopPropagation();
+    toggleSelectedDropOffStop(stop);
+    if (!clickedCheck) closeDropOffPicker();
   });
   els.departureList.addEventListener("click", (event) => {
     const toggle = event.target.closest("[data-route-toggle]");
@@ -241,6 +267,7 @@ function refreshStationsForRegion() {
   else {
     updateStationPickerValue();
     renderNearbyStations();
+    computeAvailableDropOffStops();
     renderDepartures();
   }
 }
@@ -266,13 +293,17 @@ function selectStop(stop, scroll) {
   state.selectedStops = [stop];
   updateStationPickerValue();
   renderNearbyStations();
+  computeAvailableDropOffStops();
   renderDepartures();
   if (scroll) document.querySelector(".departures-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function clearSelectedStop() {
   state.selectedStops = [];
+  state.selectedDropOffStops = [];
+  if (els.manualDropOffWrap) els.manualDropOffWrap.hidden = true;
   updateStationPickerValue();
+  updateDropOffPickerValue();
   els.selectedContext.textContent = "请选择上车站点";
   els.departureList.innerHTML = "";
   els.departureEmpty.hidden = false;
@@ -303,6 +334,7 @@ function toggleSelectedStop(stop) {
   updateStationPickerValue();
   renderStationPickerOptions(els.stationPickerSearch.value);
   renderNearbyStations();
+  computeAvailableDropOffStops();
   renderDepartures();
 }
 
@@ -322,6 +354,104 @@ function renderStationPickerOptions(query = "") {
   els.stationPickerOptions.innerHTML = options.length
     ? options.map((stop) => `<button class="station-picker__option${state.selectedStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-picker-stop="${escapeHtml(stop.key)}"><span class="station-picker__check">✓</span><span>${escapeHtml(stop.name)}</span></button>`).join("")
     : `<div class="station-picker__empty">没有匹配的站点</div>`;
+}
+
+function toggleDropOffPicker() {
+  const isOpen = els.dropOffPickerButton.getAttribute("aria-expanded") === "true";
+  if (isOpen) closeDropOffPicker();
+  else {
+    els.dropOffPicker.classList.add("is-open");
+    els.dropOffPickerButton.setAttribute("aria-expanded", "true");
+    els.dropOffPickerMenu.hidden = false;
+    els.dropOffPickerSearch.focus();
+  }
+}
+
+function closeDropOffPicker() {
+  els.dropOffPicker.classList.remove("is-open");
+  els.dropOffPickerButton.setAttribute("aria-expanded", "false");
+  els.dropOffPickerMenu.hidden = true;
+}
+
+function computeAvailableDropOffStops() {
+  if (!state.selectedStops.length) {
+    state.availableDropOffStops = [];
+    state.selectedDropOffStops = [];
+    if (els.manualDropOffWrap) els.manualDropOffWrap.hidden = true;
+    updateDropOffPickerValue();
+    renderDropOffPickerOptions();
+    return;
+  }
+  if (els.manualDropOffWrap) els.manualDropOffWrap.hidden = false;
+  const reachableKeys = new Set();
+  (state.data.routes || []).forEach((route) => {
+    if (getRouteDirection(route) !== `${state.currentRegion}-${state.destinationRegion}`) return;
+    (route.stops || []).forEach((boardingStop, boardingIndex) => {
+      if (String(boardingStop.kind) !== "1") return;
+      if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(boardingStop.stop_id)))) return;
+      allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, state.destinationRegion).forEach((dropStop) => {
+        reachableKeys.add(stopKeyFromRaw(dropStop));
+      });
+    });
+  });
+  state.availableDropOffStops = state.stops.filter((stop) => stop.region === state.destinationRegion && reachableKeys.has(stop.key));
+  const stillValid = state.selectedDropOffStops.filter((stop) => state.availableDropOffStops.some((av) => av.key === stop.key));
+  state.selectedDropOffStops = stillValid;
+  updateDropOffPickerValue();
+  renderDropOffPickerOptions();
+}
+
+function toggleSelectedDropOffStop(stop) {
+  const exists = state.selectedDropOffStops.some((item) => item.key === stop.key);
+  state.selectedDropOffStops = exists
+    ? state.selectedDropOffStops.filter((item) => item.key !== stop.key)
+    : [...state.selectedDropOffStops, stop];
+  updateDropOffPickerValue();
+  renderDropOffPickerOptions(els.dropOffPickerSearch.value);
+  renderDepartures();
+}
+
+function updateDropOffPickerValue() {
+  if (!state.selectedDropOffStops.length) {
+    els.dropOffPickerValue.textContent = "全部站点…";
+    return;
+  }
+  els.dropOffPickerValue.textContent = state.selectedDropOffStops.length === 1
+    ? state.selectedDropOffStops[0].name
+    : `已选择 ${state.selectedDropOffStops.length} 个下车站`;
+}
+
+function renderDropOffPickerOptions(query = "") {
+  const normalizedQuery = query.trim().toLocaleLowerCase("zh-CN");
+  const options = state.availableDropOffStops.filter((stop) => !normalizedQuery || stop.name.toLocaleLowerCase("zh-CN").includes(normalizedQuery));
+  els.dropOffPickerOptions.innerHTML = options.length
+    ? options.map((stop) => `<button class="station-picker__option${state.selectedDropOffStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-dropoff-stop="${escapeHtml(stop.key)}"><span class="station-picker__check">✓</span><span>${escapeHtml(stop.name)}</span></button>`).join("")
+    : `<div class="station-picker__empty">没有匹配的站点</div>`;
+}
+
+function stopKeyFromRaw(stop) {
+  return `${inferRegion(stop)}|${cleanStopName(stop.name)}`;
+}
+
+function quickSelect(mode) {
+  if (!state.data) return;
+  const isUniversityToUma = mode === "university-to-uma";
+  const boardingRegion = isUniversityToUma ? "1" : "2";
+  const dropRegion = isUniversityToUma ? "2" : "1";
+  const direction = `${boardingRegion}-${dropRegion}`;
+  const universityPattern = /澳门新街坊|荔枝湾/;
+  const umaPattern = /澳大/;
+  const boardingPattern = isUniversityToUma ? universityPattern : umaPattern;
+  const dropPattern = isUniversityToUma ? umaPattern : universityPattern;
+
+  setCurrentRegion(boardingRegion, false);
+  state.selectedStops = state.stops.filter((stop) => stop.region === boardingRegion && stop.boardingDirections.has(direction) && boardingPattern.test(stop.name));
+  state.selectedDropOffStops = state.stops.filter((stop) => stop.region === dropRegion && dropPattern.test(stop.name));
+  updateStationPickerValue();
+  renderStationPickerOptions();
+  computeAvailableDropOffStops();
+  renderDepartures();
+  document.querySelector(".departures-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderDepartures() {
@@ -351,6 +481,10 @@ function renderDepartures() {
       if (seenDepartures.has(departureKey)) return;
       const allowedStops = allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, state.destinationRegion);
       if (!allowedStops.length) return;
+      if (state.selectedDropOffStops.length) {
+        const selectedDropOffKeys = new Set(state.selectedDropOffStops.map((stop) => stop.key));
+        if (!allowedStops.some((dropStop) => selectedDropOffKeys.has(stopKeyFromRaw(dropStop)))) return;
+      }
       const isNextDay = departureMinutes < nowMinutes;
       const minutesUntil = isNextDay ? departureMinutes + 1440 - nowMinutes : departureMinutes - nowMinutes;
       seenDepartures.add(departureKey);
@@ -360,7 +494,13 @@ function renderDepartures() {
   departures.sort((a, b) => a.minutesUntil - b.minutesUntil);
 
   const selectedNames = state.selectedStops.map((stop) => escapeHtml(stop.name)).join("、");
-  els.selectedContext.innerHTML = `从 <strong>${selectedNames}</strong> 出发 · ${regionLabel(state.currentRegion)} → ${regionLabel(state.destinationRegion)} · ${departures.length} 个班次`;
+  let contextText = `从 <strong>${selectedNames}</strong> 出发`;
+  if (state.selectedDropOffStops.length) {
+    const dropOffNames = state.selectedDropOffStops.map((stop) => escapeHtml(stop.name)).join("、");
+    contextText += ` · 到 <strong>${dropOffNames}</strong> 下车`;
+  }
+  contextText += ` · ${regionLabel(state.currentRegion)} → ${regionLabel(state.destinationRegion)} · ${departures.length} 个班次`;
+  els.selectedContext.innerHTML = contextText;
   els.departureEmpty.hidden = departures.length > 0;
   els.departureList.innerHTML = departures.slice(0, MAX_DEPARTURES).map(departureHtml).join("");
 }
@@ -379,6 +519,13 @@ function departureHtml(item, index) {
   const status = vehicleStatus(item.route.stops, new Date(), item.isNextDay);
   const departureText = item.minutesUntil === 0 ? "即将发车" : `${item.minutesUntil} 分钟后`;
   const timeLabel = `${item.isNextDay ? "次日 " : ""}${item.boardingStop.time || "--:--"}`;
+  const boardingStopIds = new Set();
+  state.selectedStops.forEach((stop) => stop.stopIds.forEach((id) => boardingStopIds.add(id)));
+  const boardingIndexes = item.route.stops
+    .map((stop, index) => ({ stop, index }))
+    .filter(({ stop }) => String(stop.kind) === "1" && boardingStopIds.has(Number(stop.stop_id)))
+    .map(({ index }) => index);
+  const dropOffKeys = new Set(state.selectedDropOffStops.map((stop) => stop.key));
   return `<article class="departure-card departure-card--expanded${index === 0 ? " is-next" : ""}">
     <div class="departure-card__summary">
       <div class="departure-card__time"><strong>${escapeHtml(timeLabel)}</strong><small>${escapeHtml(item.route.route_name)}</small></div>
@@ -387,16 +534,18 @@ function departureHtml(item, index) {
       <button class="route-toggle" type="button" data-route-toggle aria-expanded="${index === 0}" aria-controls="${detailsId}"><span>站点列表</span><span>${index === 0 ? "−" : "+"}</span></button>
     </div>
     <div class="route-details" id="${detailsId}" ${index === 0 ? "" : "hidden"}>
-      <ol class="route-timeline">${routeTimelineHtml(item.route.stops, item.boardingIndex, item.allowedStops)}</ol>
+      <ol class="route-timeline">${routeTimelineHtml(item.route.stops, boardingIndexes, item.allowedStops, dropOffKeys)}</ol>
     </div>
   </article>`;
 }
 
-function routeTimelineHtml(stops, boardingIndex, allowedStops) {
+function routeTimelineHtml(stops, boardingIndexes, allowedStops, dropOffKeys) {
   const allowedIds = new Set(allowedStops.map((stop) => `${stop.stop_id}-${stop.time}`));
+  const hasDropOffFilter = dropOffKeys.size > 0;
   return stops.map((stop, index) => {
-    const isBoarding = index === boardingIndex;
-    const canDropOff = allowedIds.has(`${stop.stop_id}-${stop.time}`);
+    const isBoarding = boardingIndexes.includes(index);
+    const inAllowed = allowedIds.has(`${stop.stop_id}-${stop.time}`);
+    const canDropOff = inAllowed && (!hasDropOffFilter || dropOffKeys.has(stopKeyFromRaw(stop)));
     const region = inferRegion(stop);
     return `<li class="timeline-stop${isBoarding ? " is-boarding" : ""}${canDropOff ? " is-allowed" : ""}">
       <time>${escapeHtml(stop.time || "--:--")}</time><span class="timeline-dot"></span><div><strong>${escapeHtml(stop.name)}</strong><small>${regionLabel(region)}${isBoarding ? " · 上车" : canDropOff ? " · 可下车" : ""}</small></div>
