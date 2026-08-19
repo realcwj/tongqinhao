@@ -1,6 +1,6 @@
 const DATA_URL = "processed.json";
 const MAX_DISTANCE_KM = 1;
-const MAX_NEARBY_STATIONS = 3;
+const MAX_NEARBY_STATIONS = 5;
 const MAX_DEPARTURES = 12;
 
 const state = {
