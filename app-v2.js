@@ -210,7 +210,7 @@ function onLocationSuccess(position) {
   const inferredRegion = nearest?.region || inferRegionFromCoordinates(state.userPosition.lng);
   setCurrentRegion(inferredRegion, true);
   els.locateButton.disabled = false;
-  els.locateButton.querySelector("strong").textContent = "刷新我的位置";
+  els.locateButton.querySelector("strong").textContent = "刷新当前位置";
   setLocationState(`已定位 · ${state.userPosition.lat.toFixed(4)}, ${state.userPosition.lng.toFixed(4)}`, false);
   els.locationHint.textContent = `已判断你在${regionLabel(inferredRegion)}，附近站点按距离排序`;
 }
