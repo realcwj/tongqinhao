@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="description" content="通琴号跨境通勤实时站点与班次查询" />
+  <title>通琴号 · 跨境通勤助手</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero__glow hero__glow--one"></div>
+      <div class="hero__glow hero__glow--two"></div>
+      <nav class="topbar" aria-label="主导航">
+        <a class="brand" href="./" aria-label="通琴号首页">
+          <span class="brand__mark">TQ</span>
+          <span>
+            <strong>通琴号</strong>
+            <small>CROSS-BORDER COMMUTE</small>
+          </span>
+        </a>
+        <div class="topbar__actions">
+          <a class="nav-link" href="routes.html">全部跨境线路</a>
+          <span class="status-pill"><i></i> 数据已同步</span>
+        </div>
+      </nav>
+
+      <div class="hero__content">
+        <div class="eyebrow">SMART ROUTE FINDER <span></span> 横琴 · 澳门</div>
+        <h1>下一站，<em>刚刚好。</em></h1>
+        <p>根据你的位置，找到最近的上车点，掌握下一班跨境通勤。</p>
+        <button class="location-button" id="locateButton" type="button">
+          <span class="location-button__icon">⌖</span>
+          <span><strong>获取我的位置</strong><small>仅用于计算附近站点</small></span>
+          <span class="location-button__arrow">→</span>
+        </button>
+        <div class="hero__hint" id="locationHint">开启定位后，为你推荐 1 公里内最近的三个站点</div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <section class="section-block region-section" aria-labelledby="regionTitle">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">01 / CURRENT AREA</span>
+            <h2 id="regionTitle">我当前在</h2>
+          </div>
+          <span class="ai-badge"><span>✦</span> 定位判断</span>
+        </div>
+        <p class="section-description" id="regionReason">获取定位后自动判断，也可以手动切换</p>
+        <div class="direction-toggle" id="regionToggle" role="group" aria-label="当前所在区域">
+          <button type="button" data-region="1" class="direction-option direction-option--hengqin">
+            <span class="direction-option__flag">琴</span>
+            <span><strong>横琴</strong><small>我在横琴上车</small></span>
+            <span class="direction-option__check">✓</span>
+          </button>
+          <button type="button" data-region="2" class="direction-option direction-option--macau">
+            <span class="direction-option__flag">澳</span>
+            <span><strong>澳门</strong><small>我在澳门上车</small></span>
+            <span class="direction-option__check">✓</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="section-block nearby-section" aria-labelledby="nearbyTitle">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">02 / NEARBY</span>
+            <h2 id="nearbyTitle">附近站点</h2>
+          </div>
+          <span class="range-label"><span class="range-dot"></span> 1 KM 范围</span>
+        </div>
+
+        <div class="location-state" id="locationState" hidden>
+          <span class="location-state__icon">⌖</span>
+          <span id="locationStateText">正在定位…</span>
+        </div>
+
+        <div class="empty-state" id="nearbyEmpty" hidden>
+          <div class="empty-state__icon">⌁</div>
+          <h3>附近暂无站点</h3>
+          <p>请确认已允许浏览器访问定位，或尝试移动到通琴号站点附近。</p>
+          <button class="text-button" id="retryLocationButton" type="button">重新获取位置 →</button>
+        </div>
+
+        <div class="station-grid" id="stationGrid"></div>
+
+        <div class="manual-station" id="manualStationWrap">
+          <label for="stationSelect">手动选择当前区域内的站点</label>
+          <select id="stationSelect">
+            <option value="">选择站点…</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="section-block departures-section" aria-labelledby="departuresTitle">
+        <div class="section-heading section-heading--departures">
+          <div>
+            <span class="section-kicker">03 / DEPARTURES</span>
+            <h2 id="departuresTitle">后续班次</h2>
+          </div>
+          <span class="clock-label" id="currentTime">--:--</span>
+        </div>
+
+        <p class="section-description departure-direction-note" id="departureDirectionNote">选择当前所在区域后，自动显示前往对岸的后续班次</p>
+        <div class="selected-context" id="selectedContext"></div>
+        <div class="departure-list" id="departureList"></div>
+        <div class="empty-state empty-state--compact" id="departureEmpty" hidden>
+          <div class="empty-state__icon">☼</div>
+          <h3>今天暂无后续班次</h3>
+          <p>可以切换方向或选择其他站点试试。</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>通琴号跨境通勤助手</span>
+      <span><a href="routes.html">全部跨境线路</a> · 数据来源于公开接口 · 定位信息仅在本地使用</span>
+    </footer>
+  </div>
+
+  <script src="app-v2.js" defer></script>
+</body>
+</html>

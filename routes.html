@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="description" content="通琴号全部横琴澳门跨境通勤线路" />
+  <title>全部跨境线路 · 通琴号</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="routes-page">
+  <div class="page-shell">
+    <header class="routes-hero">
+      <nav class="topbar" aria-label="主导航">
+        <a class="brand" href="index.html" aria-label="通琴号首页">
+          <span class="brand__mark">TQ</span>
+          <span><strong>通琴号</strong><small>CROSS-BORDER COMMUTE</small></span>
+        </a>
+        <div class="topbar__actions">
+          <a class="nav-link" href="index.html">通勤助手</a>
+          <span class="status-pill"><i></i> 数据已同步</span>
+        </div>
+      </nav>
+      <div class="routes-hero__content">
+        <span class="section-kicker">ROUTE DIRECTORY</span>
+        <h1>全部跨境线路</h1>
+        <p>横琴与澳门双向通勤班次及完整站点时刻</p>
+      </div>
+    </header>
+
+    <main class="routes-main">
+      <section class="route-toolbar" aria-label="线路筛选">
+        <label class="route-search" for="routeSearch">
+          <span aria-hidden="true">⌕</span>
+          <input id="routeSearch" type="search" placeholder="搜索线路或站点" autocomplete="off" />
+        </label>
+        <div class="route-filters" id="routeFilters" role="group" aria-label="线路方向">
+          <button type="button" class="is-selected" data-filter="all">全部</button>
+          <button type="button" data-filter="1-2">横琴 → 澳门</button>
+          <button type="button" data-filter="2-1">澳门 → 横琴</button>
+        </div>
+      </section>
+
+      <div class="route-results-heading">
+        <div><span class="section-kicker">AVAILABLE ROUTES</span><h2>可用线路</h2></div>
+        <span id="routeCount">正在加载…</span>
+      </div>
+      <div class="route-directory" id="routeDirectory"></div>
+      <div class="empty-state" id="routeEmpty" hidden>
+        <div class="empty-state__icon">⌕</div>
+        <h3>没有匹配的线路</h3>
+        <p>请调整关键词或方向筛选。</p>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <span>通琴号跨境通勤助手</span>
+      <span><a href="index.html">返回通勤助手</a> · 数据来源于公开接口</span>
+    </footer>
+  </div>
+  <script src="routes.js" defer></script>
+</body>
+</html>
