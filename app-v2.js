@@ -77,7 +77,11 @@ function bindEvents() {
     const option = event.target.closest("[data-picker-stop]");
     if (!option) return;
     const stop = state.availableStops.find((item) => item.key === option.dataset.pickerStop);
-    if (stop) toggleSelectedStop(stop);
+    if (!stop) return;
+    const clickedCheck = event.target.closest(".station-picker__check") || event.target.closest(".station-picker__option") === option && event.offsetX <= 34;
+    if (clickedCheck) event.stopPropagation();
+    toggleSelectedStop(stop);
+    if (!clickedCheck) closeStationPicker();
   });
   document.addEventListener("click", (event) => {
     if (!els.stationPicker.contains(event.target)) closeStationPicker();
