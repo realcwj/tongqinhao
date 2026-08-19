@@ -593,10 +593,9 @@ function parseTime(value) {
 function updateClock() {
   if (els.currentTime) els.currentTime.textContent = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
-function setLocationState(message, loading) {
+function setLocationState(message) {
   els.locationState.hidden = false;
   els.locationStateText.textContent = message;
-  els.locationState.querySelector(".location-state__icon").textContent = loading ? "◌" : "⌖";
 }
 function haversineKm(lat1, lon1, lat2, lon2) {
   const toRad = (value) => value * Math.PI / 180;
