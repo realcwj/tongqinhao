@@ -505,10 +505,7 @@ function renderDepartures() {
   }
 
   const nowMinutes = currentMinutes();
-  const departures = [];
-  const seenDepartures = new Set();
-  const boardingStopIds = new Set();
-  state.selectedStops.forEach((stop) => stop.stopIds.forEach((id) => boardingStopIds.add(id)));
+  const routeDepartures = new Map();
   (state.data.routes || []).forEach((route) => {
     const routeDirection = getRouteDirection(route);
     if (routeDirection === direction) {
@@ -516,14 +513,9 @@ function renderDepartures() {
         if (String(boardingStop.kind) !== "1") return;
         if (inferRegion(boardingStop) !== state.currentRegion) return;
         if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(boardingStop.stop_id)))) return;
-        const departureKey = `${route.id}-${boardingStop.time}`;
-        if (seenDepartures.has(departureKey)) return;
         const allowedStops = allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, state.destinationRegion);
         if (!allowedStops.length || !matchesDropOffFilter(allowedStops)) return;
-        const item = createDeparture(route, boardingStop, boardingIndexesOfRoute(route, boardingStopIds), allowedStops, nowMinutes, false);
-        if (!item) return;
-        seenDepartures.add(departureKey);
-        departures.push(item);
+        addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, allowedStops, nowMinutes, false);
       });
       return;
     }
@@ -531,16 +523,11 @@ function renderDepartures() {
     const entry = findEntryPortStop(route, routeDirection);
     if (!entry) return;
     if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(entry.stop.stop_id)))) return;
-    const departureKey = `${route.id}-${entry.stop.time}`;
-    if (seenDepartures.has(departureKey)) return;
     const allowedStops = entryAllowedStops(route.stops, entry.index, state.currentRegion);
     if (!allowedStops.length || !matchesDropOffFilter(allowedStops)) return;
-    const item = createDeparture(route, entry.stop, [entry.index], allowedStops, nowMinutes, true);
-    if (!item) return;
-    seenDepartures.add(departureKey);
-    departures.push(item);
+    addBoardingLeg(routeDepartures, route, entry.stop, entry.index, allowedStops, nowMinutes, true);
   });
-  departures.sort((a, b) => a.minutesUntil - b.minutesUntil);
+  const departures = [...routeDepartures.values()].sort((a, b) => a.minutesUntil - b.minutesUntil);
 
   const selectedNames = state.selectedStops.map((stop) => escapeHtml(stop.name)).join("、");
   let contextText = `从 <strong>${selectedNames}</strong> 出发`;
@@ -595,37 +582,61 @@ function matchesDropOffFilter(allowedStops) {
   return allowedStops.some((dropStop) => selectedDropOffKeys.has(stopKeyFromRaw(dropStop)));
 }
 
-function createDeparture(route, boardingStop, boardingIndexes, allowedStops, nowMinutes, isEntry) {
+// 同一线路在本区域可能有多个可上车站点，合并为一张卡片（时间列显示“07:32 或 07:36”）
+function addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, allowedStops, nowMinutes, isEntry) {
   const departureMinutes = parseTime(boardingStop.time);
-  if (departureMinutes == null) return null;
+  if (departureMinutes == null) return;
   const isNextDay = departureMinutes < nowMinutes;
-  return {
-    route,
-    boardingStop,
-    boardingIndexes,
-    allowedStops,
+  const leg = {
+    stop: boardingStop,
+    index: boardingIndex,
     isNextDay,
     minutesUntil: isNextDay ? departureMinutes + 1440 - nowMinutes : departureMinutes - nowMinutes,
-    isEntry,
   };
+  let item = routeDepartures.get(route.id);
+  if (!item) {
+    item = {
+      route,
+      boardingStops: [],
+      boardingIndexes: [],
+      allowedStops: [],
+      minutesUntil: leg.minutesUntil,
+      isNextDay: leg.isNextDay,
+      isEntry,
+    };
+    routeDepartures.set(route.id, item);
+  }
+  if (item.boardingStops.some((existing) => existing.stop.time === leg.stop.time)) return;
+  item.boardingStops.push(leg);
+  item.boardingIndexes.push(boardingIndex);
+  mergeStopList(item.allowedStops, allowedStops);
+  if (leg.minutesUntil < item.minutesUntil) {
+    item.minutesUntil = leg.minutesUntil;
+    item.isNextDay = leg.isNextDay;
+  }
 }
 
-function boardingIndexesOfRoute(route, boardingStopIds) {
-  return (route.stops || [])
-    .map((stop, index) => ({ stop, index }))
-    .filter(({ stop }) => String(stop.kind) === "1" && boardingStopIds.has(Number(stop.stop_id)))
-    .map(({ index }) => index);
+function mergeStopList(target, stops) {
+  const seen = new Set(target.map((stop) => `${stop.stop_id}-${stop.time}`));
+  stops.forEach((stop) => {
+    const key = `${stop.stop_id}-${stop.time}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    target.push(stop);
+  });
 }
 
 function departureHtml(item, index) {
-  const detailsId = `route-details-${item.route.id}-${item.boardingStop.stop_id}-${index}`;
+  const detailsId = `route-details-${item.route.id}-${index}`;
   const status = vehicleStatus(item.route.stops, new Date(), item.isNextDay);
   const departureText = item.minutesUntil === 0 ? "即将发车" : `${item.minutesUntil} 分钟后`;
-  const timeLabel = `${item.isNextDay ? "次日 " : ""}${item.boardingStop.time || "--:--"}`;
+  const timeLabel = item.boardingStops
+    .map((leg) => `${leg.isNextDay ? "次日 " : ""}${escapeHtml(leg.stop.time || "--:--")}`)
+    .join(" 或<br>");
   const dropOffKeys = new Set(state.selectedDropOffStops.map((stop) => stop.key));
   return `<article class="departure-card departure-card--expanded${index === 0 ? " is-next" : ""}${item.isEntry ? " departure-card--entry" : ""}">
     <div class="departure-card__summary">
-      <div class="departure-card__time"><strong>${escapeHtml(timeLabel)}</strong><small>${escapeHtml(item.route.route_name)}</small></div>
+      <div class="departure-card__time${item.boardingStops.length > 1 ? " departure-card__time--multi" : ""}"><strong>${timeLabel}</strong><small>${escapeHtml(item.route.route_name)}</small></div>
       <div class="departure-card__route"><strong>${escapeHtml(status.label)}</strong><span>${escapeHtml(status.detail)}</span></div>
       <div class="departure-card__countdown"><strong>${departureText}</strong><small>${item.isEntry ? "口岸上车" : "本站发车"}</small></div>
       <button class="route-toggle" type="button" data-route-toggle aria-expanded="${index === 0}" aria-controls="${detailsId}"><span>站点列表</span><span>${index === 0 ? "−" : "+"}</span></button>
