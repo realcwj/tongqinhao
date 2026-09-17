@@ -1,7 +1,4 @@
-const DATA_URL = "processed.json";
-const MAX_DISTANCE_KM = 1;
-const MAX_NEARBY_STATIONS = 5;
-const MAX_DEPARTURES = 12;
+// 数据源与查询参数（DATA_URL / MAX_DISTANCE_KM / MAX_NEARBY_STATIONS / MAX_DEPARTURES）集中在 config.js
 
 const state = {
   data: null,
@@ -35,6 +32,7 @@ async function init() {
     if (!response.ok) throw new Error(`数据加载失败（HTTP ${response.status}）`);
     state.data = await response.json();
     state.stops = buildStationCatalog(state.data.routes || []);
+    if (els.routesButtonHint) els.routesButtonHint.textContent = `${(state.data.routes || []).length} 条线路总览`;
     els.locationHint.textContent = `共收录 ${state.stops.length} 个站点，定位后自动判断所在区域`;
     setLocationState("等待获取位置，也可以先手动选择所在区域", false);
     if (state.currentRegion) setCurrentRegion(state.currentRegion, false);
@@ -73,6 +71,7 @@ function cacheElements() {
   els.departureList = document.querySelector("#departureList");
   els.departureEmpty = document.querySelector("#departureEmpty");
   els.currentTime = document.querySelector("#currentTime");
+  els.routesButtonHint = document.querySelector("#routesButtonHint");
 }
 
 function bindEvents() {

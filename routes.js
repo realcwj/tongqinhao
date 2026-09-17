@@ -1,5 +1,4 @@
-const DATA_URL = "processed.json";
-
+// 数据源（DATA_URL）见 config.js
 const state = {
   routes: [],
   query: "",

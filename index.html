@@ -42,11 +42,11 @@
           </button>
           <a class="routes-button" href="routes.html">
             <span class="routes-button__icon">≡</span>
-            <span><strong>全部跨境线路</strong><small>72 条线路总览</small></span>
+            <span><strong>全部跨境线路</strong><small id="routesButtonHint">线路总览</small></span>
             <span class="routes-button__arrow">→</span>
           </a>
         </div>
-        <div class="hero__hint" id="locationHint">开启定位后，为你推荐 1 公里内最近的五个站点</div>
+        <div class="hero__hint" id="locationHint" data-config-text>开启定位后，为你推荐 {KM} 公里内最近的 {MAX} 个站点</div>
       </div>
     </header>
 
@@ -72,12 +72,12 @@
           </button>
           <button type="button" class="quick-option quick-option--sky" data-quick="nearby-to-uma">
             <span class="quick-option__flag">琴</span>
-            <span><strong>附近 → 澳大</strong><small>附近 5 个站点 → 澳大</small></span>
+            <span><strong>附近 → 澳大</strong><small data-config-text>附近 {MAX} 个站点 → 澳大</small></span>
             <span class="quick-option__arrow">→</span>
           </button>
           <button type="button" class="quick-option quick-option--amber" data-quick="nearby-to-university">
             <span class="quick-option__flag">澳</span>
-            <span><strong>附近 → 琴澳大学城</strong><small>附近 5 个站点 → 澳门新街坊 / 荔枝湾</small></span>
+            <span><strong>附近 → 琴澳大学城</strong><small data-config-text>附近 {MAX} 个站点 → 澳门新街坊 / 荔枝湾</small></span>
             <span class="quick-option__arrow">→</span>
           </button>
         </div>
@@ -113,7 +113,7 @@
         </div>
 
         <div class="section-heading section-heading--compact">
-          <span class="range-label"><span class="range-dot"></span> 附近 1KM 内最近的 5 个车站如下</span>
+          <span class="range-label" data-config-text><span class="range-dot"></span> 附近 {KM}KM 内最近的 {MAX} 个车站如下</span>
         </div>
 
         <div class="empty-state" id="nearbyEmpty" hidden>
@@ -192,7 +192,7 @@
     </footer>
   </div>
 
-  <script src="config.js?v=20260918" defer></script>
-  <script src="app-v2.js?v=20260918-time-size2" defer></script>
+  <script src="config.js?v=20260918-config2" defer></script>
+  <script src="app-v2.js?v=20260918-config3" defer></script>
 </body>
 </html>
