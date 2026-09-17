@@ -1,5 +1,5 @@
 const DATA_URL = "processed.json";
-const MAX_DISTANCE_KM = 5;
+const MAX_DISTANCE_KM = 1;
 const MAX_NEARBY_STATIONS = 5;
 const MAX_DEPARTURES = 12;
 
@@ -466,20 +466,37 @@ function stopKeyFromRaw(stop) {
   return `${inferRegion(stop)}|${cleanStopName(stop.name)}`;
 }
 
-function quickSelect(mode) {
-  if (!state.data) return;
-  const isUniversityToUma = mode === "university-to-uma";
-  const boardingRegion = isUniversityToUma ? "1" : "2";
-  const dropRegion = isUniversityToUma ? "2" : "1";
-  const direction = `${boardingRegion}-${dropRegion}`;
-  const hengqinBoardingPattern = /澳门新街坊|荔枝湾|横琴检察院（往口岸）/;
-  const umaPattern = /澳大/;
-  const boardingPattern = isUniversityToUma ? hengqinBoardingPattern : umaPattern;
-  const dropPattern = isUniversityToUma ? umaPattern : /澳门新街坊|荔枝湾/;
+// 快速选择预设：boardingPattern 为 null 时，上车点取当前区域内的附近站点（最多 MAX_NEARBY_STATIONS 个）
+const QUICK_PRESETS = {
+  "university-to-uma": { boardingRegion: "1", boardingPattern: /澳门新街坊|荔枝湾|横琴检察院（往口岸）/, dropPattern: /澳大/ },
+  "uma-to-university": { boardingRegion: "2", boardingPattern: /澳大/, dropPattern: /澳门新街坊|荔枝湾/ },
+  "nearby-to-uma": { boardingRegion: "1", boardingPattern: null, dropPattern: /澳大/ },
+  "nearby-to-university": { boardingRegion: "2", boardingPattern: null, dropPattern: /澳门新街坊|荔枝湾/ },
+};
 
+function quickSelect(mode) {
+  const preset = QUICK_PRESETS[mode];
+  if (!state.data || !preset) return;
+  const boardingRegion = preset.boardingRegion;
+  const dropRegion = oppositeRegion(boardingRegion);
+  const useNearbyStops = !preset.boardingPattern;
+
+  if (useNearbyStops && !state.userPosition) {
+    els.locationHint.textContent = "「附近」快速选择需要定位：请允许定位权限或点击「刷新当前位置」后重试";
+    requestLocation(true);
+    return;
+  }
   setCurrentRegion(boardingRegion, false);
-  state.selectedStops = state.stops.filter((stop) => stop.region === boardingRegion && stop.boardingDirections.has(direction) && boardingPattern.test(stop.name));
-  state.selectedDropOffStops = state.stops.filter((stop) => stop.region === dropRegion && dropPattern.test(stop.name));
+  if (useNearbyStops) {
+    if (!state.nearbyStops.length) {
+      els.locationHint.textContent = `附近 ${MAX_DISTANCE_KM} 公里内没有可上车的站点，请手动选择上车站点`;
+      return;
+    }
+    state.selectedStops = state.nearbyStops.slice(0, MAX_NEARBY_STATIONS);
+  } else {
+    state.selectedStops = state.availableStops.filter((stop) => preset.boardingPattern.test(stop.name));
+  }
+  state.selectedDropOffStops = state.stops.filter((stop) => stop.region === dropRegion && preset.dropPattern.test(stop.name));
   updateStationPickerValue();
   renderStationPickerOptions();
   computeAvailableDropOffStops();
