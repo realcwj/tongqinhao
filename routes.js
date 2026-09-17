@@ -55,30 +55,51 @@ function normalizeRoute(route) {
 }
 
 function renderRoutes() {
-  const routes = state.routes.filter((route) => {
-    const matchesFilter = state.filter === "all" || route.direction === state.filter;
-    const matchesSearch = !state.query || route.searchText.includes(state.query);
-    return matchesFilter && matchesSearch;
-  });
+  const nowMinutes = currentMinutes();
+  const routes = state.routes
+    .filter((route) => {
+      const matchesFilter = state.filter === "all" || route.direction === state.filter;
+      const matchesSearch = !state.query || route.searchText.includes(state.query);
+      return matchesFilter && matchesSearch;
+    })
+    .sort((a, b) => minutesUntilDeparture(a, nowMinutes) - minutesUntilDeparture(b, nowMinutes));
   els.count.textContent = `${routes.length} / ${state.routes.length} 条`;
   els.empty.hidden = routes.length > 0;
-  els.directory.innerHTML = routes.map(routeCardHtml).join("");
+  els.directory.innerHTML = routes.map((route) => routeCardHtml(route, nowMinutes)).join("");
 }
 
-function routeCardHtml(route) {
+// 距当前时间最近的发车排在最前；今天已过的班次视为次日，排在当日班次之后
+function minutesUntilDeparture(route, nowMinutes) {
+  const firstMinutes = parseTime(route.stops[0]?.time);
+  if (firstMinutes == null) return Number.POSITIVE_INFINITY;
+  return firstMinutes >= nowMinutes ? firstMinutes - nowMinutes : firstMinutes + 1440 - nowMinutes;
+}
+
+function currentMinutes() {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+function routeCardHtml(route, nowMinutes) {
   const detailsId = `route-${route.id}-${route.firstRegion}-${route.lastRegion}`;
   const status = vehicleStatus(route.stops, new Date());
   const first = route.stops[0];
   const last = route.stops[route.stops.length - 1];
+  const firstMinutes = parseTime(first?.time);
+  const isNextDay = firstMinutes != null && firstMinutes < nowMinutes;
+  // 次日班次（当日已收车）改提示"次日发车"，正在运行的班次仍显示实时位置
+  const chip = isNextDay && status.tone === "is-finished"
+    ? { label: "次日发车", detail: `${minutesText(firstMinutes + 1440 - nowMinutes)}后`, tone: "is-waiting" }
+    : status;
   const directionText = route.firstRegion === route.lastRegion
     ? `${regionLabel(route.firstRegion)}区域线路`
     : `${regionLabel(route.firstRegion)} → ${regionLabel(route.lastRegion)}`;
   return `<article class="directory-card">
     <button type="button" class="directory-card__summary" data-route-id="${route.id}" aria-expanded="false" aria-controls="${detailsId}">
-      <span class="directory-card__time"><strong>${escapeHtml(first?.time || "--:--")}</strong><small>始发</small></span>
+      <span class="directory-card__time"><strong>${escapeHtml(first?.time || "--:--")}</strong><small>${isNextDay ? "次日始发" : "始发"}</small></span>
       <span class="directory-card__main"><strong>${escapeHtml(route.route_name)}</strong><small>${escapeHtml(first?.name || "未知站点")} → ${escapeHtml(last?.name || "未知站点")}</small></span>
       <span class="direction-chip direction-chip--${route.firstRegion}">${directionText}</span>
-      <span class="vehicle-chip ${status.tone}"><strong>${escapeHtml(status.label)}</strong><small>${escapeHtml(status.detail)}</small></span>
+      <span class="vehicle-chip ${chip.tone}"><strong>${escapeHtml(chip.label)}</strong><small>${escapeHtml(chip.detail)}</small></span>
       <span class="directory-card__meta"><strong>${route.stops.length}</strong><small>站</small></span>
       <span class="directory-card__expand" aria-hidden="true">+</span>
     </button>
