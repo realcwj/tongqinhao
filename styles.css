@@ -175,35 +175,43 @@ h2 { margin-top: 8px; font-size: 26px; letter-spacing: -.045em; }
 .quick-section .ai-badge { color: #6b5fc0; }
 .quick-actions { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .quick-option {
+  --quick-accent: var(--mint-dark);
+  --quick-border: rgba(57, 200, 153, .38);
+  --quick-surface: linear-gradient(135deg, #f7fefb, #e8faf3);
+  --quick-glow: rgba(57, 200, 153, .22);
   display: flex;
   align-items: center;
   gap: 13px;
-  border: 1px solid rgba(23, 41, 68, .12);
+  border: 1px solid var(--quick-border);
   border-radius: 17px;
   padding: 16px 17px;
-  color: #fff;
-  background: linear-gradient(135deg, #16233c, #223a5e);
-  box-shadow: 0 12px 26px rgba(26, 45, 74, .24);
+  color: var(--ink);
+  background: var(--quick-surface);
+  box-shadow: 0 10px 24px var(--quick-glow);
   text-align: left;
-  transition: .2s;
+  transition: transform .2s, box-shadow .2s, border-color .2s;
 }
-.quick-option:hover, .quick-option:active { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(26, 45, 74, .34); }
+.quick-option:hover, .quick-option:active { transform: translateY(-2px); border-color: var(--quick-accent); box-shadow: 0 16px 30px var(--quick-glow); }
+/* 主题色：通勤主线用薄荷绿、返程用薰衣草紫、定位快捷用天蓝与暖橙 */
+.quick-option--mint { --quick-accent: var(--mint-dark); --quick-border: rgba(57, 200, 153, .38); --quick-surface: linear-gradient(135deg, #f7fefb, #e8faf3); --quick-glow: rgba(57, 200, 153, .22); }
+.quick-option--lavender { --quick-accent: #6b5fc0; --quick-border: rgba(140, 123, 223, .36); --quick-surface: linear-gradient(135deg, #fbfaff, #efebff); --quick-glow: rgba(140, 123, 223, .22); }
+.quick-option--sky { --quick-accent: #2b7cb3; --quick-border: rgba(88, 158, 214, .36); --quick-surface: linear-gradient(135deg, #f7fcff, #e7f2fd); --quick-glow: rgba(88, 158, 214, .22); }
+.quick-option--amber { --quick-accent: #b1732b; --quick-border: rgba(230, 172, 102, .44); --quick-surface: linear-gradient(135deg, #fffcf7, #fff1e0); --quick-glow: rgba(230, 172, 102, .24); }
 .quick-option__flag {
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
   border-radius: 13px;
-  color: var(--mint);
-  background: rgba(158, 242, 208, .16);
-  border: 1px solid rgba(158, 242, 208, .38);
+  color: var(--quick-accent);
+  background: rgba(255, 255, 255, .9);
+  border: 1px solid var(--quick-border);
   font-size: 20px;
   font-weight: 800;
 }
-.quick-option__flag--macau { color: #cdc4ff; background: rgba(205, 196, 255, .16); border-color: rgba(205, 196, 255, .42); }
 .quick-option strong, .quick-option small { display: block; }
-.quick-option strong { color: #fff; font-size: 14px; }
-.quick-option small { margin-top: 3px; color: rgba(220, 228, 238, .74); font-size: 10px; }
+.quick-option strong { color: var(--ink); font-size: 14px; }
+.quick-option small { margin-top: 3px; color: rgba(52, 64, 84, .72); font-size: 10px; }
 .quick-option__arrow {
   display: grid;
   place-items: center;
@@ -211,9 +219,9 @@ h2 { margin-top: 8px; font-size: 26px; letter-spacing: -.045em; }
   height: 30px;
   margin-left: auto;
   border-radius: 50%;
-  color: #0b2530;
-  background: var(--mint);
-  box-shadow: 0 6px 14px rgba(57, 200, 153, .38);
+  color: #fff;
+  background: var(--quick-accent);
+  box-shadow: 0 6px 14px var(--quick-glow);
   font-size: 16px;
 }
 
