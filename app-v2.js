@@ -1,5 +1,3 @@
-// 数据源与查询参数（DATA_URL / MAX_DISTANCE_KM / MAX_NEARBY_STATIONS / MAX_DEPARTURES）集中在 config.js
-
 const state = {
   data: null,
   stops: [],
@@ -15,6 +13,8 @@ const state = {
 };
 
 const els = {};
+// 当前渲染的班次列表（展开卡片时按需取用站点时刻）
+let renderedDepartures = [];
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -118,7 +118,9 @@ function bindEvents() {
     const expanded = toggle.getAttribute("aria-expanded") === "true";
     toggle.setAttribute("aria-expanded", String(!expanded));
     toggle.querySelector("span:last-child").textContent = expanded ? "+" : "−";
-    if (details) details.hidden = expanded;
+    if (!details) return;
+    if (!expanded) renderTimeline(details);
+    details.hidden = expanded;
   });
 }
 
@@ -555,7 +557,8 @@ function renderDepartures() {
   contextText += ` · ${scopeSummary(departures.length - entryCount, entryCount)} · ${departures.length} 个班次`;
   els.selectedContext.innerHTML = contextText;
   els.departureEmpty.hidden = departures.length > 0;
-  els.departureList.innerHTML = departures.slice(0, MAX_DEPARTURES).map(departureHtml).join("");
+  renderedDepartures = departures;
+  els.departureList.innerHTML = departures.map(departureHtml).join("");
 }
 
 function scopeSummary(forwardCount, entryCount) {
@@ -654,18 +657,32 @@ function departureHtml(item, index) {
   const boardingStops = item.boardingStops
     .map((leg) => `${leg.isNextDay ? "次日 " : ""}${escapeHtml(leg.stop.time || "--:--")} ${escapeHtml(leg.stop.name)}`)
     .join("、");
-  const dropOffKeys = new Set(state.selectedDropOffStops.map((stop) => stop.key));
-  return `<article class="departure-card departure-card--expanded${index === 0 ? " is-next" : ""}${item.isEntry ? " departure-card--entry" : ""}">
+  return `<article class="departure-card departure-card--expanded${index === 0 ? " is-next" : ""}${item.isEntry ? " departure-card--entry" : ""}" data-departure-index="${index}">
     <div class="departure-card__summary">
       <div class="departure-card__time${item.boardingStops.length > 1 ? " departure-card__time--multi" : ""}"><strong>${timeLabel}</strong><small>${escapeHtml(item.route.route_name)}</small></div>
       <div class="departure-card__route"><strong>${escapeHtml(statusLabel)}</strong><span>${routePath}</span><span class="departure-card__boarding">可上车站点：${boardingStops}</span></div>
       <div class="departure-card__countdown"><strong>${departureText}</strong><small>${item.isEntry ? "口岸上车" : "本站发车"}</small></div>
       <button class="route-toggle" type="button" data-route-toggle aria-expanded="${index === 0}" aria-controls="${detailsId}"><span>站点列表</span><span>${index === 0 ? "−" : "+"}</span></button>
     </div>
-    <div class="route-details" id="${detailsId}" ${index === 0 ? "" : "hidden"}>
-      <ol class="route-timeline">${routeTimelineHtml(item.route.stops, item.boardingIndexes, item.allowedStops, dropOffKeys, item.isEntry ? "口岸上车" : "上车")}</ol>
+    <div class="route-details" id="${detailsId}"${index === 0 ? ' data-rendered="1"' : " hidden"}>
+      ${index === 0 ? timelineHtml(item) : ""}
     </div>
   </article>`;
+}
+
+// 折叠的站点时刻先不生成，展开时才渲染，避免一次渲染大量隐藏 DOM
+function timelineHtml(item) {
+  const dropOffKeys = new Set(state.selectedDropOffStops.map((stop) => stop.key));
+  return `<ol class="route-timeline">${routeTimelineHtml(item.route.stops, item.boardingIndexes, item.allowedStops, dropOffKeys, item.isEntry ? "口岸上车" : "上车")}</ol>`;
+}
+
+function renderTimeline(details) {
+  if (details.dataset.rendered === "1") return;
+  const card = details.closest(".departure-card");
+  const item = renderedDepartures[Number(card?.dataset.departureIndex)];
+  if (!item) return;
+  details.innerHTML = timelineHtml(item);
+  details.dataset.rendered = "1";
 }
 
 function routeTimelineHtml(stops, boardingIndexes, allowedStops, dropOffKeys, boardingLabel = "上车") {

@@ -15,9 +15,6 @@ const MAX_DISTANCE_KM = 1;
 // 附近站点列表、「附近」快速选择最多取用的站点数
 const MAX_NEARBY_STATIONS = 5;
 
-// 「后续班次」最多展示的条数
-const MAX_DEPARTURES = 12;
-
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-sync-pill]").forEach((pill) => {
     pill.href = DATA_SYNC_URL;
