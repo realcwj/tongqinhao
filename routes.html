@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260918-color" />
+  <link rel="stylesheet" href="styles.css?v=20260918-color2" />
 </head>
 <body class="routes-page">
   <div class="page-shell">
@@ -21,7 +21,7 @@
         </a>
         <div class="topbar__actions">
           <a class="nav-link" href="index.html">通勤助手</a>
-          <span class="status-pill"><i></i> 数据已同步</span>
+          <a class="status-pill status-pill--link" data-sync-pill href="https://github.com/realcwj/tongqinhao/blob/main/processed.json" target="_blank" rel="noopener"><i></i><span data-sync-label>数据同步</span></a>
         </div>
       </nav>
       <div class="routes-hero__content">
@@ -61,6 +61,7 @@
       <span><a href="index.html">返回通勤助手</a> · <a href="https://github.com/realcwj/tongqinhao" target="_blank" rel="noopener">GitHub 仓库</a> · 数据来源于公开接口</span>
     </footer>
   </div>
+  <script src="config.js?v=20260918" defer></script>
   <script src="routes.js?v=20260918-sort2" defer></script>
 </body>
 </html>

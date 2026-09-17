@@ -63,6 +63,8 @@ button { cursor: pointer; }
 .brand strong { display: block; font-size: 16px; letter-spacing: .08em; }
 .brand small { display: block; margin-top: 2px; color: var(--muted); font-size: 8px; letter-spacing: .18em; }
 .status-pill { display: flex; align-items: center; gap: 8px; border: 1px solid #dbe4ec; border-radius: 99px; padding: 8px 12px; color: var(--muted); font-size: 11px; background: rgba(255, 255, 255, .7); }
+.status-pill--link { text-decoration: none; transition: color .2s, border-color .2s, background .2s, box-shadow .2s; }
+.status-pill--link:hover { color: var(--mint-dark); border-color: #9fe8cd; background: #fff; box-shadow: 0 6px 16px rgba(57, 200, 153, .18); }
 .status-pill i, .range-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--mint-strong); box-shadow: 0 0 0 4px rgba(57, 200, 153, .13); }
 
 .hero__content { padding: 16px 0 18px; }

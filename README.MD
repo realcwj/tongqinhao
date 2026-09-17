@@ -33,6 +33,7 @@
 ```
 ├── index.html          # 通勤助手主页
 ├── routes.html         # 全部跨境线路页
+├── config.js           # 全站配置：数据同步日期、数据文件链接
 ├── app-v2.js           # 主页逻辑（定位、选择、班次查询）
 ├── routes.js           # 线路页逻辑
 ├── styles.css          # 全局样式
