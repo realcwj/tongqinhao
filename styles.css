@@ -236,9 +236,10 @@ h2 { margin-top: 8px; font-size: 26px; letter-spacing: -.045em; }
 .selected-context strong { color: var(--mint-dark); }
 .departure-list { display: grid; gap: 10px; }
 .departure-card { min-height: 92px; border: 1px solid var(--line); border-radius: 15px; background: #fff; overflow: hidden; }
-.departure-card__summary { display: grid; grid-template-columns: 82px 1fr auto auto; align-items: center; gap: 22px; padding: 14px 20px; }
+.departure-card__summary { display: grid; grid-template-columns: 96px 1fr auto auto; align-items: center; gap: 22px; padding: 14px 20px; }
 .departure-card__time strong { display: block; font-size: 22px; letter-spacing: -.05em; }
-.departure-card__time--multi strong { font-size: 16px; line-height: 1.4; }
+.departure-card__time--multi strong { line-height: 1.3; }
+.departure-card__or, .departure-card__day { font-size: .5em; }
 .departure-card__time small { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
 .departure-card__route { position: relative; padding-left: 18px; border-left: 1px dashed #cbd5e1; }
 .departure-card__route::before { content: ""; position: absolute; top: 4px; left: -5px; width: 9px; height: 9px; border: 2px solid #fff; border-radius: 50%; background: var(--mint-strong); box-shadow: 0 0 0 1px var(--mint-strong); }
@@ -352,7 +353,7 @@ h2 { margin-top: 8px; font-size: 26px; letter-spacing: -.045em; }
   .station-picker { width: 100%; }
   .station-picker__menu { position: fixed; top: auto; right: 16px; bottom: 16px; left: 16px; width: auto; }
   .quick-actions { grid-template-columns: 1fr; }
-  .departure-card__summary { grid-template-columns: 70px 1fr; gap: 13px; padding: 14px; }
+  .departure-card__summary { grid-template-columns: 96px 1fr; gap: 13px; padding: 14px; }
   .departure-card__countdown { grid-column: 2; min-width: auto; text-align: left; }
   .route-toggle { grid-column: 1 / -1; justify-content: space-between; width: 100%; }
   .route-details { padding: 17px 14px 19px; }

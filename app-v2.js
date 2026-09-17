@@ -648,8 +648,8 @@ function departureHtml(item, index) {
   const statusLabel = vehicleStatus(item.route.stops, new Date(), item.isNextDay);
   const departureText = item.minutesUntil === 0 ? "即将发车" : `${item.minutesUntil} 分钟后`;
   const timeLabel = item.boardingStops
-    .map((leg) => `${leg.isNextDay ? "次日 " : ""}${escapeHtml(leg.stop.time || "--:--")}`)
-    .join(" 或<br>");
+    .map((leg) => `${leg.isNextDay ? '<span class="departure-card__day">次日</span> ' : ""}${escapeHtml(leg.stop.time || "--:--")}`)
+    .join(' <span class="departure-card__or">或</span><br>');
   const routeStops = item.route.stops || [];
   const routePath = `${escapeHtml(routeStops[0]?.name || "未知站点")} → ${escapeHtml(routeStops[routeStops.length - 1]?.name || "未知站点")}`;
   const boardingStops = item.boardingStops
