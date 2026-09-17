@@ -127,6 +127,8 @@ function buildStationCatalog(routes) {
   const map = new Map();
   routes.forEach((route) => {
     const direction = getRouteDirection(route);
+    const originRegion = direction ? direction[0] : null;
+    const entry = direction ? findEntryPortStop(route, direction) : null;
     (route.stops || []).forEach((stop) => {
       const stopId = Number(stop.stop_id);
       const lat = Number(stop.y);
@@ -141,14 +143,18 @@ function buildStationCatalog(routes) {
           lng,
           region: inferRegion(stop),
           boardingDirections: new Set(),
+          entryBoardingDirections: new Set(),
         });
       }
       const station = map.get(stopId);
       station.stopIds.add(stopId);
       const cleanedName = cleanStopName(stop.name);
       if (cleanedName.length < station.name.length) station.name = cleanedName;
-      if (direction && String(stop.kind) === "1") {
-        map.get(stopId).boardingDirections.add(direction);
+      if (direction && String(stop.kind) === "1" && inferRegion(stop) === originRegion) {
+        station.boardingDirections.add(direction);
+      }
+      if (entry && stop === entry.stop) {
+        station.entryBoardingDirections.add(reverseDirection(direction));
       }
     });
   });
@@ -161,13 +167,22 @@ function buildStationCatalog(routes) {
       const target = merged.get(key);
       stop.stopIds.forEach((id) => target.stopIds.add(id));
       stop.boardingDirections.forEach((direction) => target.boardingDirections.add(direction));
+      stop.entryBoardingDirections.forEach((direction) => target.entryBoardingDirections.add(direction));
     }
   }
   return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
 }
 
+// 接口数据中同一物理站点的不同命名，统一到同一站点
+const PORT_STOP_ALIASES = new Map([["南迎客平台（南二门）", "横琴口岸（南二门 迎客平台）"]]);
+
 function cleanStopName(name) {
-  return String(name || "未命名站点").trim().replace(/[\s]*[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]+[\s]*$/u, "").trim();
+  const cleaned = String(name || "未命名站点")
+    .trim()
+    .replace(/[\s]*[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]+[\s]*$/u, "")
+    .replace(/[\s.。．·]+$/u, "")
+    .trim();
+  return PORT_STOP_ALIASES.get(cleaned) || cleaned;
 }
 
 function getRouteDirection(route) {
@@ -246,7 +261,7 @@ function setCurrentRegion(region, automatic) {
 function refreshStationsForRegion() {
   if (!state.currentRegion) return;
   const direction = `${state.currentRegion}-${state.destinationRegion}`;
-  const available = state.stops.filter((stop) => stop.region === state.currentRegion && stop.boardingDirections.has(direction));
+  const available = state.stops.filter((stop) => stop.region === state.currentRegion && canBoardFrom(stop, direction));
   state.availableStops = available;
   renderStationPickerOptions();
 
@@ -261,7 +276,7 @@ function refreshStationsForRegion() {
   }
   renderNearbyStations();
 
-  const selectedStillValid = state.selectedStops.filter((stop) => stop.region === state.currentRegion && stop.boardingDirections.has(direction));
+  const selectedStillValid = state.selectedStops.filter((stop) => stop.region === state.currentRegion && canBoardFrom(stop, direction));
   state.selectedStops = selectedStillValid;
   if (!state.selectedStops.length && state.nearbyStops.length) selectStop(state.nearbyStops[0], false);
   else {
@@ -285,7 +300,7 @@ function stationCardHtml(stop, closest) {
   return `<button class="station-card${state.selectedStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-nearby-stop="${stop.key}">
     <div class="station-card__top"><span class="station-kind ${stop.region === "2" ? "station-kind--macau" : ""}">${regionLabel(stop.region)}站点</span><span class="distance">${closest ? "最近 · " : ""}${formatDistance(stop.distanceKm)}</span></div>
     <h3>${escapeHtml(stop.name)}</h3>
-    <div class="station-card__bottom"><span>可查询该站点班次</span><span class="station-card__check">✓</span></div>
+    <div class="station-card__bottom"><span>${stop.entryBoardingDirections?.size ? "口岸站可上车" : "可查询该站点班次"}</span><span class="station-card__check">✓</span></div>
   </button>`;
 }
 
@@ -383,18 +398,29 @@ function computeAvailableDropOffStops() {
     return;
   }
   if (els.manualDropOffWrap) els.manualDropOffWrap.hidden = false;
+  const direction = `${state.currentRegion}-${state.destinationRegion}`;
   const reachableKeys = new Set();
   (state.data.routes || []).forEach((route) => {
-    if (getRouteDirection(route) !== `${state.currentRegion}-${state.destinationRegion}`) return;
-    (route.stops || []).forEach((boardingStop, boardingIndex) => {
-      if (String(boardingStop.kind) !== "1") return;
-      if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(boardingStop.stop_id)))) return;
-      allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, state.destinationRegion).forEach((dropStop) => {
-        reachableKeys.add(stopKeyFromRaw(dropStop));
+    const routeDirection = getRouteDirection(route);
+    if (routeDirection === direction) {
+      (route.stops || []).forEach((boardingStop, boardingIndex) => {
+        if (String(boardingStop.kind) !== "1") return;
+        if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(boardingStop.stop_id)))) return;
+        allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, state.destinationRegion).forEach((dropStop) => {
+          reachableKeys.add(stopKeyFromRaw(dropStop));
+        });
       });
+      return;
+    }
+    if (routeDirection !== reverseDirection(direction)) return;
+    const entry = findEntryPortStop(route, routeDirection);
+    if (!entry) return;
+    if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(entry.stop.stop_id)))) return;
+    entryAllowedStops(route.stops, entry.index, state.currentRegion).forEach((dropStop) => {
+      reachableKeys.add(stopKeyFromRaw(dropStop));
     });
   });
-  state.availableDropOffStops = state.stops.filter((stop) => stop.region === state.destinationRegion && reachableKeys.has(stop.key));
+  state.availableDropOffStops = state.stops.filter((stop) => reachableKeys.has(stop.key));
   const stillValid = state.selectedDropOffStops.filter((stop) => state.availableDropOffStops.some((av) => av.key === stop.key));
   state.selectedDropOffStops = stillValid;
   updateDropOffPickerValue();
@@ -425,8 +451,15 @@ function renderDropOffPickerOptions(query = "") {
   const normalizedQuery = query.trim().toLocaleLowerCase("zh-CN");
   const options = state.availableDropOffStops.filter((stop) => !normalizedQuery || stop.name.toLocaleLowerCase("zh-CN").includes(normalizedQuery));
   els.dropOffPickerOptions.innerHTML = options.length
-    ? options.map((stop) => `<button class="station-picker__option${state.selectedDropOffStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-dropoff-stop="${escapeHtml(stop.key)}"><span class="station-picker__check">✓</span><span>${escapeHtml(stop.name)}</span></button>`).join("")
+    ? options.map((stop) => `<button class="station-picker__option${state.selectedDropOffStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-dropoff-stop="${escapeHtml(stop.key)}"><span class="station-picker__check">✓</span><span>${escapeHtml(stop.name)}</span>${dropOffRegionTag(stop)}</button>`).join("")
     : `<div class="station-picker__empty">没有匹配的站点</div>`;
+}
+
+// 口岸站上车时，下车站与上车站同区域（境内短途），用标签区分
+function dropOffRegionTag(stop) {
+  return stop.region === state.destinationRegion
+    ? ""
+    : `<span class="station-picker__tag station-picker__tag--${stop.region}">${regionLabel(stop.region)}境内</span>`;
 }
 
 function stopKeyFromRaw(stop) {
@@ -455,10 +488,16 @@ function quickSelect(mode) {
 }
 
 function renderDepartures() {
-  if (state.currentRegion && els.departureDirectionNote) {
-    els.departureDirectionNote.innerHTML = `${regionLabel(state.currentRegion)}上车 · 前往 <strong>${regionLabel(state.destinationRegion)}</strong>`;
+  const direction = state.currentRegion && state.destinationRegion ? `${state.currentRegion}-${state.destinationRegion}` : null;
+  const hasNormalBoarding = Boolean(direction) && state.selectedStops.some((stop) => stop.boardingDirections.has(direction));
+  const hasEntryBoarding = Boolean(direction) && state.selectedStops.some((stop) => stop.entryBoardingDirections.has(direction));
+  if (direction && els.departureDirectionNote) {
+    const forwardNote = `${regionLabel(state.currentRegion)}上车 · 前往 <strong>${regionLabel(state.destinationRegion)}</strong>`;
+    if (!hasEntryBoarding) els.departureDirectionNote.innerHTML = forwardNote;
+    else if (hasNormalBoarding) els.departureDirectionNote.innerHTML = `${forwardNote} · 另含口岸站境内班次`;
+    else els.departureDirectionNote.innerHTML = `${regionLabel(state.currentRegion)}上车 · 口岸站短途（限${regionLabel(state.currentRegion)}境内下车）`;
   }
-  if (!state.data || !state.selectedStops.length || !state.currentRegion || !state.destinationRegion) {
+  if (!state.data || !state.selectedStops.length || !direction) {
     els.selectedContext.textContent = state.currentRegion ? "请选择上车站点" : "请选择当前所在区域和上车站点";
     els.departureList.innerHTML = "";
     els.departureEmpty.hidden = false;
@@ -468,28 +507,38 @@ function renderDepartures() {
   const nowMinutes = currentMinutes();
   const departures = [];
   const seenDepartures = new Set();
+  const boardingStopIds = new Set();
+  state.selectedStops.forEach((stop) => stop.stopIds.forEach((id) => boardingStopIds.add(id)));
   (state.data.routes || []).forEach((route) => {
-    if (getRouteDirection(route) !== `${state.currentRegion}-${state.destinationRegion}`) return;
-    (route.stops || []).forEach((boardingStop, boardingIndex) => {
-      const selectedStop = state.selectedStops.find((stop) => stop.stopIds.has(Number(boardingStop.stop_id)));
-      if (!selectedStop) return;
-      if (String(boardingStop.kind) !== "1") return;
-      if (inferRegion(boardingStop) !== state.currentRegion) return;
-      const departureMinutes = parseTime(boardingStop.time);
-      if (departureMinutes == null) return;
-      const departureKey = `${route.id}-${boardingStop.time}`;
-      if (seenDepartures.has(departureKey)) return;
-      const allowedStops = allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, state.destinationRegion);
-      if (!allowedStops.length) return;
-      if (state.selectedDropOffStops.length) {
-        const selectedDropOffKeys = new Set(state.selectedDropOffStops.map((stop) => stop.key));
-        if (!allowedStops.some((dropStop) => selectedDropOffKeys.has(stopKeyFromRaw(dropStop)))) return;
-      }
-      const isNextDay = departureMinutes < nowMinutes;
-      const minutesUntil = isNextDay ? departureMinutes + 1440 - nowMinutes : departureMinutes - nowMinutes;
-      seenDepartures.add(departureKey);
-      departures.push({ route, boardingStop, boardingIndex, allowedStops, isNextDay, minutesUntil, selectedStop });
-    });
+    const routeDirection = getRouteDirection(route);
+    if (routeDirection === direction) {
+      (route.stops || []).forEach((boardingStop, boardingIndex) => {
+        if (String(boardingStop.kind) !== "1") return;
+        if (inferRegion(boardingStop) !== state.currentRegion) return;
+        if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(boardingStop.stop_id)))) return;
+        const departureKey = `${route.id}-${boardingStop.time}`;
+        if (seenDepartures.has(departureKey)) return;
+        const allowedStops = allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, state.destinationRegion);
+        if (!allowedStops.length || !matchesDropOffFilter(allowedStops)) return;
+        const item = createDeparture(route, boardingStop, boardingIndexesOfRoute(route, boardingStopIds), allowedStops, nowMinutes, false);
+        if (!item) return;
+        seenDepartures.add(departureKey);
+        departures.push(item);
+      });
+      return;
+    }
+    if (routeDirection !== reverseDirection(direction)) return;
+    const entry = findEntryPortStop(route, routeDirection);
+    if (!entry) return;
+    if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(entry.stop.stop_id)))) return;
+    const departureKey = `${route.id}-${entry.stop.time}`;
+    if (seenDepartures.has(departureKey)) return;
+    const allowedStops = entryAllowedStops(route.stops, entry.index, state.currentRegion);
+    if (!allowedStops.length || !matchesDropOffFilter(allowedStops)) return;
+    const item = createDeparture(route, entry.stop, [entry.index], allowedStops, nowMinutes, true);
+    if (!item) return;
+    seenDepartures.add(departureKey);
+    departures.push(item);
   });
   departures.sort((a, b) => a.minutesUntil - b.minutesUntil);
 
@@ -499,10 +548,18 @@ function renderDepartures() {
     const dropOffNames = state.selectedDropOffStops.map((stop) => escapeHtml(stop.name)).join("、");
     contextText += ` · 到 <strong>${dropOffNames}</strong> 下车`;
   }
-  contextText += ` · ${regionLabel(state.currentRegion)} → ${regionLabel(state.destinationRegion)} · ${departures.length} 个班次`;
+  const entryCount = departures.filter((item) => item.isEntry).length;
+  contextText += ` · ${scopeSummary(departures.length - entryCount, entryCount)} · ${departures.length} 个班次`;
   els.selectedContext.innerHTML = contextText;
   els.departureEmpty.hidden = departures.length > 0;
   els.departureList.innerHTML = departures.slice(0, MAX_DEPARTURES).map(departureHtml).join("");
+}
+
+function scopeSummary(forwardCount, entryCount) {
+  const current = regionLabel(state.currentRegion);
+  if (entryCount && !forwardCount) return `口岸站上车 · ${current}境内`;
+  if (entryCount) return `${current} → ${regionLabel(state.destinationRegion)} · 含 ${entryCount} 个口岸站境内班次`;
+  return `${current} → ${regionLabel(state.destinationRegion)}`;
 }
 
 function allowedDropOffStops(stops, boardingIndex, currentRegion, destinationRegion) {
@@ -514,32 +571,72 @@ function allowedDropOffStops(stops, boardingIndex, currentRegion, destinationReg
   return destinationStops;
 }
 
+// 线路驶入对岸后停靠的首个口岸站：该站同样允许上车，乘客可在本区域后续站点下车
+
+function findEntryPortStop(route, direction) {
+  const stops = route?.stops || [];
+  const destinationRegion = String(direction).split("-")[1];
+  const index = stops.findIndex((stop) => inferRegion(stop) === destinationRegion && isPortStopName(stop.name));
+  return index >= 0 ? { stop: stops[index], index } : null;
+}
+
+function entryAllowedStops(stops, entryIndex, region) {
+  return stops.slice(entryIndex + 1).filter((stop) => inferRegion(stop) === region);
+}
+
+function isPortStopName(name) {
+  const value = String(name || "");
+  return !/往口岸/.test(value) && /口岸|迎客平台/.test(value);
+}
+
+function matchesDropOffFilter(allowedStops) {
+  if (!state.selectedDropOffStops.length) return true;
+  const selectedDropOffKeys = new Set(state.selectedDropOffStops.map((stop) => stop.key));
+  return allowedStops.some((dropStop) => selectedDropOffKeys.has(stopKeyFromRaw(dropStop)));
+}
+
+function createDeparture(route, boardingStop, boardingIndexes, allowedStops, nowMinutes, isEntry) {
+  const departureMinutes = parseTime(boardingStop.time);
+  if (departureMinutes == null) return null;
+  const isNextDay = departureMinutes < nowMinutes;
+  return {
+    route,
+    boardingStop,
+    boardingIndexes,
+    allowedStops,
+    isNextDay,
+    minutesUntil: isNextDay ? departureMinutes + 1440 - nowMinutes : departureMinutes - nowMinutes,
+    isEntry,
+  };
+}
+
+function boardingIndexesOfRoute(route, boardingStopIds) {
+  return (route.stops || [])
+    .map((stop, index) => ({ stop, index }))
+    .filter(({ stop }) => String(stop.kind) === "1" && boardingStopIds.has(Number(stop.stop_id)))
+    .map(({ index }) => index);
+}
+
 function departureHtml(item, index) {
   const detailsId = `route-details-${item.route.id}-${item.boardingStop.stop_id}-${index}`;
   const status = vehicleStatus(item.route.stops, new Date(), item.isNextDay);
   const departureText = item.minutesUntil === 0 ? "即将发车" : `${item.minutesUntil} 分钟后`;
   const timeLabel = `${item.isNextDay ? "次日 " : ""}${item.boardingStop.time || "--:--"}`;
-  const boardingStopIds = new Set();
-  state.selectedStops.forEach((stop) => stop.stopIds.forEach((id) => boardingStopIds.add(id)));
-  const boardingIndexes = item.route.stops
-    .map((stop, index) => ({ stop, index }))
-    .filter(({ stop }) => String(stop.kind) === "1" && boardingStopIds.has(Number(stop.stop_id)))
-    .map(({ index }) => index);
   const dropOffKeys = new Set(state.selectedDropOffStops.map((stop) => stop.key));
-  return `<article class="departure-card departure-card--expanded${index === 0 ? " is-next" : ""}">
+  return `<article class="departure-card departure-card--expanded${index === 0 ? " is-next" : ""}${item.isEntry ? " departure-card--entry" : ""}">
     <div class="departure-card__summary">
       <div class="departure-card__time"><strong>${escapeHtml(timeLabel)}</strong><small>${escapeHtml(item.route.route_name)}</small></div>
       <div class="departure-card__route"><strong>${escapeHtml(status.label)}</strong><span>${escapeHtml(status.detail)}</span></div>
-      <div class="departure-card__countdown"><strong>${departureText}</strong><small>本站发车</small></div>
+      <div class="departure-card__countdown"><strong>${departureText}</strong><small>${item.isEntry ? "口岸上车" : "本站发车"}</small></div>
       <button class="route-toggle" type="button" data-route-toggle aria-expanded="${index === 0}" aria-controls="${detailsId}"><span>站点列表</span><span>${index === 0 ? "−" : "+"}</span></button>
     </div>
     <div class="route-details" id="${detailsId}" ${index === 0 ? "" : "hidden"}>
-      <ol class="route-timeline">${routeTimelineHtml(item.route.stops, boardingIndexes, item.allowedStops, dropOffKeys)}</ol>
+      <ol class="route-timeline">${routeTimelineHtml(item.route.stops, item.boardingIndexes, item.allowedStops, dropOffKeys, item.isEntry ? "口岸上车" : "上车")}</ol>
     </div>
   </article>`;
 }
 
-function routeTimelineHtml(stops, boardingIndexes, allowedStops, dropOffKeys) {
+function routeTimelineHtml(stops, boardingIndexes, allowedStops, dropOffKeys, boardingLabel = "上车") {
   const allowedIds = new Set(allowedStops.map((stop) => `${stop.stop_id}-${stop.time}`));
   const hasDropOffFilter = dropOffKeys.size > 0;
   return stops.map((stop, index) => {
@@ -548,7 +645,7 @@ function routeTimelineHtml(stops, boardingIndexes, allowedStops, dropOffKeys) {
     const canDropOff = inAllowed && (!hasDropOffFilter || dropOffKeys.has(stopKeyFromRaw(stop)));
     const region = inferRegion(stop);
     return `<li class="timeline-stop${isBoarding ? " is-boarding" : ""}${canDropOff ? " is-allowed" : ""}">
-      <time>${escapeHtml(stop.time || "--:--")}</time><span class="timeline-dot"></span><div><strong>${escapeHtml(stop.name)}</strong><small>${regionLabel(region)}${isBoarding ? " · 上车" : canDropOff ? " · 可下车" : ""}</small></div>
+      <time>${escapeHtml(stop.time || "--:--")}</time><span class="timeline-dot"></span><div><strong>${escapeHtml(stop.name)}</strong><small>${regionLabel(region)}${isBoarding ? ` · ${boardingLabel}` : canDropOff ? " · 可下车" : ""}</small></div>
     </li>`;
   }).join("");
 }
@@ -572,7 +669,7 @@ function vehicleStatus(stops, now, isNextDay = false) {
 function inferRegion(stop) {
   const name = String(stop?.name || "");
   const lng = Number(stop?.x);
-  const hengqin = /横琴|中医药产业园|琴海|金融岛|汇通|市民中心|人才公寓|华发首府|保利国际|中海名钻|K2荔枝湾|上村|下村|琴政|琴朗|十字门|环岛北路|科创中心|洋环路|中葡经贸|中央汇|横琴医院|伯牙|金汇国际|澳门新街坊/;
+  const hengqin = /横琴|中医药产业园|琴海|金融岛|汇通|市民中心|人才公寓|华发首府|保利国际|中海名钻|K2荔枝湾|上村|下村|琴政|琴朗|十字门|环岛北路|科创中心|洋环路|中葡经贸|中央汇|横琴医院|伯牙|金汇国际|迎客平台|南二门|澳门新街坊/;
   const macau = /澳门|澳大|澳旅|澳理|新濠|银河|威尼斯人|葡京|氹仔|关闸|亚马喇|筷子基|望德|林茂|赛马会|友谊马路|海上居|东北大马路|二龙喉|观音|鮑思高|巴波沙|沙梨头|海擎天|泉悦花园|连贯公路|机场大马路|排角/;
   if (hengqin.test(name)) return "1";
   if (macau.test(name)) return "2";
@@ -585,6 +682,10 @@ function inferRegionFromCoordinates(lng) {
 
 function regionLabel(region) { return String(region) === "2" ? "澳门" : "横琴"; }
 function oppositeRegion(region) { return String(region) === "1" ? "2" : "1"; }
+function reverseDirection(direction) { return String(direction) === "1-2" ? "2-1" : "1-2"; }
+function canBoardFrom(stop, direction) {
+  return stop.boardingDirections.has(direction) || stop.entryBoardingDirections.has(direction);
+}
 function currentMinutes() { const now = new Date(); return now.getHours() * 60 + now.getMinutes(); }
 function parseTime(value) {
   const match = typeof value === "string" ? value.match(/^(\d{1,2}):(\d{2})$/) : null;

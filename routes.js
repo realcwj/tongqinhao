@@ -127,7 +127,7 @@ function vehicleStatus(stops, now) {
 function inferRegion(stop) {
   const name = String(stop?.name || "");
   const lng = Number(stop?.x);
-  const hengqin = /横琴|中医药产业园|琴海|金融岛|汇通|市民中心|人才公寓|华发首府|保利国际|中海名钻|K2荔枝湾|上村|下村|琴政|琴朗|十字门|环岛北路|科创中心|洋环路|中葡经贸|中央汇|横琴医院|伯牙|金汇国际|澳门新街坊/;
+  const hengqin = /横琴|中医药产业园|琴海|金融岛|汇通|市民中心|人才公寓|华发首府|保利国际|中海名钻|K2荔枝湾|上村|下村|琴政|琴朗|十字门|环岛北路|科创中心|洋环路|中葡经贸|中央汇|横琴医院|伯牙|金汇国际|迎客平台|南二门|澳门新街坊/;
   const macau = /澳门|澳大|澳旅|澳理|新濠|银河|威尼斯人|葡京|氹仔|关闸|亚马喇|筷子基|望德|林茂|赛马会|友谊马路|海上居|东北大马路|二龙喉|观音|鮑思高|巴波沙|沙梨头|海擎天|泉悦花园|连贯公路|机场大马路|排角/;
   if (hengqin.test(name)) return "1";
   if (macau.test(name)) return "2";
