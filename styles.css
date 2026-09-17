@@ -233,6 +233,7 @@ h2 { margin-top: 8px; font-size: 26px; letter-spacing: -.045em; }
 .departure-card__route::before { content: ""; position: absolute; top: 4px; left: -5px; width: 9px; height: 9px; border: 2px solid #fff; border-radius: 50%; background: var(--mint-strong); box-shadow: 0 0 0 1px var(--mint-strong); }
 .departure-card__route strong { display: block; font-size: 12px; }
 .departure-card__route span { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+.departure-card__route .departure-card__boarding { margin-top: 3px; color: var(--mint-dark); font-weight: 600; }
 .departure-card__countdown { min-width: 90px; text-align: right; }
 .departure-card__countdown strong { display: block; color: var(--mint-dark); font-size: 13px; }
 .departure-card__countdown small { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; }

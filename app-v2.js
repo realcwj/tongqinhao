@@ -628,16 +628,21 @@ function mergeStopList(target, stops) {
 
 function departureHtml(item, index) {
   const detailsId = `route-details-${item.route.id}-${index}`;
-  const status = vehicleStatus(item.route.stops, new Date(), item.isNextDay);
+  const statusLabel = vehicleStatus(item.route.stops, new Date(), item.isNextDay);
   const departureText = item.minutesUntil === 0 ? "即将发车" : `${item.minutesUntil} 分钟后`;
   const timeLabel = item.boardingStops
     .map((leg) => `${leg.isNextDay ? "次日 " : ""}${escapeHtml(leg.stop.time || "--:--")}`)
     .join(" 或<br>");
+  const routeStops = item.route.stops || [];
+  const routePath = `${escapeHtml(routeStops[0]?.name || "未知站点")} → ${escapeHtml(routeStops[routeStops.length - 1]?.name || "未知站点")}`;
+  const boardingStops = item.boardingStops
+    .map((leg) => `${leg.isNextDay ? "次日 " : ""}${escapeHtml(leg.stop.time || "--:--")} ${escapeHtml(leg.stop.name)}`)
+    .join("、");
   const dropOffKeys = new Set(state.selectedDropOffStops.map((stop) => stop.key));
   return `<article class="departure-card departure-card--expanded${index === 0 ? " is-next" : ""}${item.isEntry ? " departure-card--entry" : ""}">
     <div class="departure-card__summary">
       <div class="departure-card__time${item.boardingStops.length > 1 ? " departure-card__time--multi" : ""}"><strong>${timeLabel}</strong><small>${escapeHtml(item.route.route_name)}</small></div>
-      <div class="departure-card__route"><strong>${escapeHtml(status.label)}</strong><span>${escapeHtml(status.detail)}</span></div>
+      <div class="departure-card__route"><strong>${escapeHtml(statusLabel)}</strong><span>${routePath}</span><span class="departure-card__boarding">可上车站点：${boardingStops}</span></div>
       <div class="departure-card__countdown"><strong>${departureText}</strong><small>${item.isEntry ? "口岸上车" : "本站发车"}</small></div>
       <button class="route-toggle" type="button" data-route-toggle aria-expanded="${index === 0}" aria-controls="${detailsId}"><span>站点列表</span><span>${index === 0 ? "−" : "+"}</span></button>
     </div>
@@ -664,17 +669,16 @@ function routeTimelineHtml(stops, boardingIndexes, allowedStops, dropOffKeys, bo
 function vehicleStatus(stops, now, isNextDay = false) {
   const nowValue = now.getHours() * 60 + now.getMinutes();
   const timed = stops.map((stop) => ({ stop, minutes: parseTime(stop.time) })).filter((item) => item.minutes != null);
-  if (!timed.length) return { label: "时间待确认", detail: "线路时刻暂不可用" };
-  if (isNextDay) return { label: "未发车", detail: `次日 ${timed[0].stop.name} 始发` };
-  if (nowValue < timed[0].minutes) return { label: "未发车", detail: `${timed[0].stop.name} 始发` };
-  if (nowValue >= timed[timed.length - 1].minutes) return { label: "已结束", detail: `已抵达 ${timed[timed.length - 1].stop.name}` };
+  if (!timed.length) return "时间待确认";
+  if (isNextDay || nowValue < timed[0].minutes) return "未发车";
+  if (nowValue >= timed[timed.length - 1].minutes) return "已结束";
   for (let index = 0; index < timed.length - 1; index += 1) {
     const current = timed[index];
     const next = timed[index + 1];
-    if (nowValue === current.minutes) return { label: `在 ${current.stop.name}`, detail: `下一站 ${next.stop.name}` };
-    if (nowValue > current.minutes && nowValue < next.minutes) return { label: `前往 ${next.stop.name}`, detail: `在 ${current.stop.name} 和 ${next.stop.name} 之间` };
+    if (nowValue === current.minutes) return `在 ${current.stop.name} · 下一站 ${next.stop.name}`;
+    if (nowValue > current.minutes && nowValue < next.minutes) return `前往 ${next.stop.name}`;
   }
-  return { label: "运行中", detail: "车辆正在行驶" };
+  return "运行中";
 }
 
 function inferRegion(stop) {
