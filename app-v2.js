@@ -472,10 +472,10 @@ function quickSelect(mode) {
   const boardingRegion = isUniversityToUma ? "1" : "2";
   const dropRegion = isUniversityToUma ? "2" : "1";
   const direction = `${boardingRegion}-${dropRegion}`;
-  const universityPattern = /澳门新街坊|荔枝湾/;
+  const hengqinBoardingPattern = /澳门新街坊|荔枝湾|横琴检察院（往口岸）/;
   const umaPattern = /澳大/;
-  const boardingPattern = isUniversityToUma ? universityPattern : umaPattern;
-  const dropPattern = isUniversityToUma ? umaPattern : universityPattern;
+  const boardingPattern = isUniversityToUma ? hengqinBoardingPattern : umaPattern;
+  const dropPattern = isUniversityToUma ? umaPattern : /澳门新街坊|荔枝湾/;
 
   setCurrentRegion(boardingRegion, false);
   state.selectedStops = state.stops.filter((stop) => stop.region === boardingRegion && stop.boardingDirections.has(direction) && boardingPattern.test(stop.name));
