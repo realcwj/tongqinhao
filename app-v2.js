@@ -127,6 +127,8 @@ function bindEvents() {
 function buildStationCatalog(routes) {
   const map = new Map();
   routes.forEach((route) => {
+    // 暂无发车计划的线路不计入站点目录（否则会推荐没有班次可上的站点）
+    if (route.has_schedule === false) return;
     const direction = getRouteDirection(route);
     const originRegion = direction ? direction[0] : null;
     const entry = direction ? findEntryPortStop(route, direction) : null;
@@ -402,6 +404,7 @@ function computeAvailableDropOffStops() {
   const direction = `${state.currentRegion}-${state.destinationRegion}`;
   const reachableKeys = new Set();
   (state.data.routes || []).forEach((route) => {
+    if (route.has_schedule === false) return;
     const routeDirection = getRouteDirection(route);
     if (routeDirection === direction) {
       (route.stops || []).forEach((boardingStop, boardingIndex) => {
@@ -525,6 +528,8 @@ function renderDepartures() {
   const nowMinutes = currentMinutes();
   const routeDepartures = new Map();
   (state.data.routes || []).forEach((route) => {
+    // 未来几天没有发车计划的线路不参与班次查询
+    if (route.has_schedule === false) return;
     const routeDirection = getRouteDirection(route);
     if (routeDirection === direction) {
       (route.stops || []).forEach((boardingStop, boardingIndex) => {

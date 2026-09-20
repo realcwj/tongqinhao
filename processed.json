@@ -16,6 +16,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "A2线-上班线",
       "bus_id": "rppt3TBV/Lvs0gQtL0xzJQ%3D%3D",
       "stops": [
@@ -107,6 +108,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "A2线-下班线",
       "bus_id": "JZ9/UgFeQItZO/AGYQissw%3D%3D",
       "stops": [
@@ -197,6 +199,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "A3线早班-上班",
       "bus_id": "f0XVqDhrdrsJl2tly+rfpA%3D%3D",
       "stops": [
@@ -303,6 +306,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "A3线中班-下班",
       "bus_id": "f0XVqDhrdrsJl2tly+rfpA%3D%3D",
       "stops": [
@@ -410,6 +414,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "A3线晚班-下班",
       "bus_id": "f0XVqDhrdrsJl2tly+rfpA%3D%3D",
       "stops": [
@@ -517,6 +522,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "A4线下午-上班",
       "bus_id": "f0XVqDhrdrsJl2tly+rfpA%3D%3D",
       "stops": [
@@ -671,6 +677,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "A4线夜班-下班",
       "bus_id": "f0XVqDhrdrsJl2tly+rfpA%3D%3D",
       "stops": [
@@ -775,6 +782,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B1线（高校线）-上班",
       "bus_id": "Y0aRTDPEpdBiaI+JiDUJ8g%3D%3D",
       "stops": [
@@ -879,6 +887,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B1线（高校线）-上班",
       "bus_id": "Y0aRTDPEpdBiaI+JiDUJ8g%3D%3D",
       "stops": [
@@ -983,6 +992,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B1线（高校线）-下班",
       "bus_id": "Y0aRTDPEpdBiaI+JiDUJ8g%3D%3D",
       "stops": [
@@ -1071,6 +1081,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B2线（高校线）-上班",
       "bus_id": "/MFaeJboCZCotGZXbFJ8Mg%3D%3D",
       "stops": [
@@ -1159,6 +1170,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B2线（高校线）-上班",
       "bus_id": "/MFaeJboCZCotGZXbFJ8Mg%3D%3D",
       "stops": [
@@ -1247,6 +1259,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B2线（高校线）-下班",
       "bus_id": "/MFaeJboCZCotGZXbFJ8Mg%3D%3D",
       "stops": [
@@ -1359,6 +1372,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B2线（高校线）-下班",
       "bus_id": "/MFaeJboCZCotGZXbFJ8Mg%3D%3D",
       "stops": [
@@ -1471,6 +1485,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B3线（高校线）-上班",
       "bus_id": "cPUZtMtmCUkZXGFuaEDOZQ%3D%3D",
       "stops": [
@@ -1567,6 +1582,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B3线（高校线）-上班",
       "bus_id": "cPUZtMtmCUkZXGFuaEDOZQ%3D%3D",
       "stops": [
@@ -1663,6 +1679,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B3线（高校线）-下班",
       "bus_id": "cPUZtMtmCUkZXGFuaEDOZQ%3D%3D",
       "stops": [
@@ -1743,6 +1760,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B3线（高校线）-下班",
       "bus_id": "cPUZtMtmCUkZXGFuaEDOZQ%3D%3D",
       "stops": [
@@ -1823,6 +1841,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B4线（高校线）-上班",
       "bus_id": "aJGfNWBrq9BPqkyJjBdJSg%3D%3D",
       "stops": [
@@ -1943,6 +1962,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B4线（高校线）-上班",
       "bus_id": "aJGfNWBrq9BPqkyJjBdJSg%3D%3D",
       "stops": [
@@ -2063,6 +2083,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B4线（高校线）-下班",
       "bus_id": "aJGfNWBrq9BPqkyJjBdJSg%3D%3D",
       "stops": [
@@ -2143,6 +2164,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B5线（高校线）-上班",
       "bus_id": "JZ9/UgFeQItZO/AGYQissw%3D%3D",
       "stops": [
@@ -2247,6 +2269,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B5线（高校线）-上班",
       "bus_id": "JZ9/UgFeQItZO/AGYQissw%3D%3D",
       "stops": [
@@ -2351,6 +2374,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B5线（高校线）-下班",
       "bus_id": "JZ9/UgFeQItZO/AGYQissw%3D%3D",
       "stops": [
@@ -2455,6 +2479,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B5线（高校线）-下班",
       "bus_id": "JZ9/UgFeQItZO/AGYQissw%3D%3D",
       "stops": [
@@ -2559,6 +2584,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B6线（高校线）-上班",
       "bus_id": "CakeBqvgrLydXgKw6PNfZQ%3D%3D",
       "stops": [
@@ -2679,6 +2705,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B6线（高校线）-上班",
       "bus_id": "CakeBqvgrLydXgKw6PNfZQ%3D%3D",
       "stops": [
@@ -2799,6 +2826,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B6线（高校线）-下班",
       "bus_id": "CakeBqvgrLydXgKw6PNfZQ%3D%3D",
       "stops": [
@@ -2887,6 +2915,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B7线（高校线）-上班",
       "bus_id": "cPUZtMtmCUkZXGFuaEDOZQ%3D%3D",
       "stops": [
@@ -2959,6 +2988,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B8线（高校线）-早班",
       "bus_id": "/MFaeJboCZCotGZXbFJ8Mg%3D%3D",
       "stops": [
@@ -3103,6 +3133,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B8线（高校线）-晚班",
       "bus_id": "y6m21p0ClkE6HjS7s3phhA%3D%3D",
       "stops": [
@@ -3263,6 +3294,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B9线（高校线）-上班",
       "bus_id": "y6m21p0ClkE6HjS7s3phhA%3D%3D",
       "stops": [
@@ -3383,6 +3415,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B9线（高校线）-下班",
       "bus_id": "y6m21p0ClkE6HjS7s3phhA%3D%3D",
       "stops": [
@@ -3503,6 +3536,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B10线(高校线)-午下班",
       "bus_id": "Ba7wBNx8dZwVJfNw6fRdiw%3D%3D",
       "stops": [
@@ -3591,6 +3625,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B10线(高校线)-午上班",
       "bus_id": "Ba7wBNx8dZwVJfNw6fRdiw%3D%3D",
       "stops": [
@@ -3679,6 +3714,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B11线(高校线)-夜下班",
       "bus_id": "CakeBqvgrLydXgKw6PNfZQ%3D%3D",
       "stops": [
@@ -3807,6 +3843,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B12线(高校线)-夜下班",
       "bus_id": "Ba7wBNx8dZwVJfNw6fRdiw%3D%3D",
       "stops": [
@@ -3906,6 +3943,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "C1线-上班",
       "bus_id": "VasGg0V/cG6s6vBTWaDznQ%3D%3D",
       "stops": [
@@ -4029,6 +4067,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "C1线-上班",
       "bus_id": "VasGg0V/cG6s6vBTWaDznQ%3D%3D",
       "stops": [
@@ -4152,6 +4191,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "C1线-下班",
       "bus_id": "VasGg0V/cG6s6vBTWaDznQ%3D%3D",
       "stops": [
@@ -4243,6 +4283,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "C2线-上班",
       "bus_id": "M3GlTOUGJXCiPwtGZi94Kg%3D%3D",
       "stops": [
@@ -4334,6 +4375,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "C3线-上班",
       "bus_id": "M3GlTOUGJXCiPwtGZi94Kg%3D%3D",
       "stops": [
@@ -4425,6 +4467,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "C3线-下班",
       "bus_id": "M3GlTOUGJXCiPwtGZi94Kg%3D%3D",
       "stops": [
@@ -4507,6 +4550,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "C4线早班-上班",
       "bus_id": "zyrKLRDz1fFRdT57D+CDQg%3D%3D",
       "stops": [
@@ -4606,6 +4650,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "C4线晚班-下班",
       "bus_id": "zyrKLRDz1fFRdT57D+CDQg%3D%3D",
       "stops": [
@@ -4697,6 +4742,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "C4线中班-上班",
       "bus_id": "zyrKLRDz1fFRdT57D+CDQg%3D%3D",
       "stops": [
@@ -4796,6 +4842,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "C4线夜班-下班",
       "bus_id": "zyrKLRDz1fFRdT57D+CDQg%3D%3D",
       "stops": [
@@ -4892,6 +4939,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "D1市民中心-上班线",
       "bus_id": "bs6hqXxQpNqNg1RtX70ukA%3D%3D",
       "stops": [
@@ -4997,6 +5045,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "D1市民中心-下班线",
       "bus_id": "bs6hqXxQpNqNg1RtX70ukA%3D%3D",
       "stops": [
@@ -5125,6 +5174,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "D2中医药产业园-上班",
       "bus_id": "Ba7wBNx8dZwVJfNw6fRdiw%3D%3D",
       "stops": [
@@ -5246,6 +5296,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "D2中医药产业园-下班",
       "bus_id": "CakeBqvgrLydXgKw6PNfZQ%3D%3D",
       "stops": [
@@ -5367,6 +5418,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "D3澳琴西线早班-上班",
       "bus_id": "pEU6MDYOz9VamG38YP0QGw%3D%3D",
       "stops": [
@@ -5488,6 +5540,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "D3澳琴西线晚班-下班",
       "bus_id": "pEU6MDYOz9VamG38YP0QGw%3D%3D",
       "stops": [
@@ -5608,6 +5661,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "D5澳琴东线早班-上班",
       "bus_id": "bqJQGuxcBB5XTBYgxccDpA%3D%3D",
       "stops": [
@@ -5753,6 +5807,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "D5澳琴东线晚班-下班",
       "bus_id": "bqJQGuxcBB5XTBYgxccDpA%3D%3D",
       "stops": [
@@ -5913,6 +5968,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "D6澳琴东线午班-上班",
       "bus_id": "bqJQGuxcBB5XTBYgxccDpA%3D%3D",
       "stops": [
@@ -6073,6 +6129,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "D6澳琴东线午班-下班",
       "bus_id": "bqJQGuxcBB5XTBYgxccDpA%3D%3D",
       "stops": [
@@ -6241,6 +6298,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B13线（高校线）-澳琴上班",
       "bus_id": "oo/OrZvpOINRsw9+OSjufA%3D%3D",
       "stops": [
@@ -6337,6 +6395,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B13线（高校线）-琴澳午班",
       "bus_id": "oo/OrZvpOINRsw9+OSjufA%3D%3D",
       "stops": [
@@ -6425,6 +6484,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B13线（高校线）-澳琴下班",
       "bus_id": "oo/OrZvpOINRsw9+OSjufA%3D%3D",
       "stops": [
@@ -6521,6 +6581,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B14线（高校线）-琴澳上班",
       "bus_id": "vtM6QGGGLmrqc1gIaTKORQ%3D%3D",
       "stops": [
@@ -6617,6 +6678,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B14线（高校线)-澳琴午班",
       "bus_id": "vtM6QGGGLmrqc1gIaTKORQ%3D%3D",
       "stops": [
@@ -6729,6 +6791,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B14线（高校线）-琴澳下班",
       "bus_id": "vtM6QGGGLmrqc1gIaTKORQ%3D%3D",
       "stops": [
@@ -6833,6 +6896,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B15线（高校线）-澳琴上班",
       "bus_id": "pJjA7CEkmawUdIinMpyqwA%3D%3D",
       "stops": [
@@ -6913,6 +6977,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B15线（高校线）-琴澳午班",
       "bus_id": "pJjA7CEkmawUdIinMpyqwA%3D%3D",
       "stops": [
@@ -6993,6 +7058,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B15线（高校线）-澳琴下班",
       "bus_id": "pJjA7CEkmawUdIinMpyqwA%3D%3D",
       "stops": [
@@ -7073,6 +7139,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B15线（高校线）-琴澳晚班",
       "bus_id": "pJjA7CEkmawUdIinMpyqwA%3D%3D",
       "stops": [
@@ -7153,6 +7220,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B16线（高校线）-琴澳上班",
       "bus_id": "KS2d5qXoCcycZw+AFrl/rw%3D%3D",
       "stops": [
@@ -7233,6 +7301,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B16线（高校线）-澳琴午班",
       "bus_id": "KS2d5qXoCcycZw+AFrl/rw%3D%3D",
       "stops": [
@@ -7313,6 +7382,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B16线（高校线）-琴澳下班",
       "bus_id": "KS2d5qXoCcycZw+AFrl/rw%3D%3D",
       "stops": [
@@ -7393,6 +7463,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B16线（高校线）-澳琴晚班",
       "bus_id": "KS2d5qXoCcycZw+AFrl/rw%3D%3D",
       "stops": [
@@ -7473,6 +7544,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B17线（高校线）-琴澳午上班",
       "bus_id": "Y0aRTDPEpdBiaI+JiDUJ8g%3D%3D",
       "stops": [
@@ -7553,6 +7625,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B17线（高校线）-澳琴午下班",
       "bus_id": "M3GlTOUGJXCiPwtGZi94Kg%3D%3D",
       "stops": [
@@ -7633,6 +7706,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B17线（高校线）-琴澳晚上班",
       "bus_id": "/MFaeJboCZCotGZXbFJ8Mg%3D%3D",
       "stops": [
@@ -7713,6 +7787,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B17线（高校线）-澳琴晚下班",
       "bus_id": "rppt3TBV/Lvs0gQtL0xzJQ%3D%3D",
       "stops": [
@@ -7793,6 +7868,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B18线（高校线）-琴澳上班",
       "bus_id": "bs6hqXxQpNqNg1RtX70ukA%3D%3D",
       "stops": [
@@ -7873,6 +7949,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B18线（高校线）-澳琴午班",
       "bus_id": "bs6hqXxQpNqNg1RtX70ukA%3D%3D",
       "stops": [
@@ -7953,6 +8030,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B19线（高校线）-澳琴下班",
       "bus_id": "euLgx3RaFw+ULD6I8vFH+A%3D%3D",
       "stops": [
@@ -8033,6 +8111,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B19线（高校线）-琴澳午班",
       "bus_id": "euLgx3RaFw+ULD6I8vFH+A%3D%3D",
       "stops": [
@@ -8113,6 +8192,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B19线（高校线）-琴澳晚班",
       "bus_id": "euLgx3RaFw+ULD6I8vFH+A%3D%3D",
       "stops": [
@@ -8193,6 +8273,7 @@
         "2026-09-24",
         "2026-09-25"
       ],
+      "has_schedule": true,
       "route_name": "B20线（高校线）-澳琴上班",
       "bus_id": "euLgx3RaFw+ULD6I8vFH+A%3D%3D",
       "stops": [
@@ -8275,6 +8356,7 @@
         "2026-09-26",
         "2026-09-27"
       ],
+      "has_schedule": true,
       "route_name": "A1线-上班线",
       "bus_id": "rppt3TBV/Lvs0gQtL0xzJQ%3D%3D",
       "stops": [
@@ -8338,9 +8420,10 @@
     },
     {
       "id": 380,
-      "uid": "380@09:00",
-      "departure": "09:00",
+      "uid": "380",
+      "departure": null,
       "dates": [],
+      "has_schedule": false,
       "route_name": "A5线-澳琴早上班",
       "bus_id": "cPUZtMtmCUkZXGFuaEDOZQ%3D%3D",
       "stops": [
@@ -8412,9 +8495,10 @@
     },
     {
       "id": 381,
-      "uid": "381@10:15",
-      "departure": "10:15",
+      "uid": "381",
+      "departure": null,
       "dates": [],
+      "has_schedule": false,
       "route_name": "A5线-琴澳上班",
       "bus_id": "cPUZtMtmCUkZXGFuaEDOZQ%3D%3D",
       "stops": [
@@ -8486,9 +8570,10 @@
     },
     {
       "id": 384,
-      "uid": "384@13:15",
-      "departure": "13:15",
+      "uid": "384",
+      "departure": null,
       "dates": [],
+      "has_schedule": false,
       "route_name": "A5线-琴澳午上班",
       "bus_id": null,
       "stops": [
@@ -8560,9 +8645,10 @@
     },
     {
       "id": 385,
-      "uid": "385@13:30",
-      "departure": "13:30",
+      "uid": "385",
+      "departure": null,
       "dates": [],
+      "has_schedule": false,
       "route_name": "A5线-澳琴午下班",
       "bus_id": "cPUZtMtmCUkZXGFuaEDOZQ%3D%3D",
       "stops": [
@@ -8634,9 +8720,10 @@
     },
     {
       "id": 388,
-      "uid": "388@17:45",
-      "departure": "17:45",
+      "uid": "388",
+      "departure": null,
       "dates": [],
+      "has_schedule": false,
       "route_name": "A5线-琴澳晚下班",
       "bus_id": "cPUZtMtmCUkZXGFuaEDOZQ%3D%3D",
       "stops": [

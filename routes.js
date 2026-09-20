@@ -72,8 +72,9 @@ function renderRoutes() {
   els.directory.innerHTML = routes.map((route) => routeCardHtml(route, nowMinutes)).join("");
 }
 
-// 距当前时间最近的发车排在最前；今天已过的班次视为次日，排在当日班次之后
+// 距当前时间最近的发车排在最前；今天已过的班次视为次日，排在当日班次之后；暂无发车计划排在最后
 function minutesUntilDeparture(route, nowMinutes) {
+  if (route.has_schedule === false) return Number.POSITIVE_INFINITY;
   const firstMinutes = parseTime(route.stops[0]?.time);
   if (firstMinutes == null) return Number.POSITIVE_INFINITY;
   return firstMinutes >= nowMinutes ? firstMinutes - nowMinutes : firstMinutes + 1440 - nowMinutes;
@@ -86,21 +87,24 @@ function currentMinutes() {
 
 function routeCardHtml(route, nowMinutes) {
   const detailsId = `route-${routeKey(route)}-${route.firstRegion}-${route.lastRegion}`;
+  const hasSchedule = route.has_schedule !== false;
   const status = vehicleStatus(route.stops, new Date());
   const first = route.stops[0];
   const last = route.stops[route.stops.length - 1];
   const firstMinutes = parseTime(first?.time);
   const isNextDay = firstMinutes != null && firstMinutes < nowMinutes;
-  // 次日班次（当日已收车）改提示"次日发车"，正在运行的班次仍显示实时位置
-  const chip = isNextDay && status.tone === "is-finished"
-    ? { label: "次日发车", detail: `${minutesText(firstMinutes + 1440 - nowMinutes)}后`, tone: "is-waiting" }
-    : status;
+  // 次日班次（当日已收车）改提示"次日发车"，正在运行的班次仍显示实时位置；暂无发车计划单独标记
+  const chip = !hasSchedule
+    ? { label: "暂无发车计划", detail: "未来几天无班次", tone: "is-idle" }
+    : isNextDay && status.tone === "is-finished"
+      ? { label: "次日发车", detail: `${minutesText(firstMinutes + 1440 - nowMinutes)}后`, tone: "is-waiting" }
+      : status;
   const directionText = route.firstRegion === route.lastRegion
     ? `${regionLabel(route.firstRegion)}区域线路`
     : `${regionLabel(route.firstRegion)} → ${regionLabel(route.lastRegion)}`;
   return `<article class="directory-card">
     <button type="button" class="directory-card__summary" data-route-id="${routeKey(route)}" aria-expanded="false" aria-controls="${detailsId}">
-      <span class="directory-card__time"><strong>${escapeHtml(first?.time || "--:--")}</strong><small>${isNextDay ? "次日始发" : "始发"}</small></span>
+      <span class="directory-card__time"><strong>${hasSchedule ? escapeHtml(first?.time || "--:--") : "--:--"}</strong><small>${hasSchedule ? (isNextDay ? "次日始发" : "始发") : "暂无发车计划"}</small></span>
       <span class="directory-card__main"><strong>${escapeHtml(route.route_name)}</strong><small>${escapeHtml(first?.name || "未知站点")} → ${escapeHtml(last?.name || "未知站点")}</small></span>
       <span class="direction-chip direction-chip--${route.firstRegion}">${directionText}</span>
       <span class="vehicle-chip ${chip.tone}"><strong>${escapeHtml(chip.label)}</strong><small>${escapeHtml(chip.detail)}</small></span>
@@ -108,7 +112,7 @@ function routeCardHtml(route, nowMinutes) {
       <span class="directory-card__expand" aria-hidden="true">+</span>
     </button>
     <div class="directory-card__details" id="${detailsId}" hidden>
-      <div class="directory-route-head"><span>线路编号 ${route.id}</span><strong>${escapeHtml(first?.time || "--:--")} - ${escapeHtml(last?.time || "--:--")}</strong></div>
+      <div class="directory-route-head"><span>线路编号 ${route.id}</span><strong>${hasSchedule ? `${escapeHtml(first?.time || "--:--")} - ${escapeHtml(last?.time || "--:--")}` : "暂无发车计划"}</strong></div>
       <ol class="directory-timeline">${route.stops.map((stop, index) => stopHtml(stop, index, route.stops.length)).join("")}</ol>
     </div>
   </article>`;

@@ -279,6 +279,10 @@ def build_processed_payload(
 	站点接口只会返回「当前班次」的站点时刻，因此先通过发车时间接口取到
 	该线路的全部发车时间（含未来几天的开行日期），再把站点时刻整体平移到
 	每个发车时间上，从而得到每个班次各自的站点时刻（同线路各班次的相对时刻一致）。
+
+	若发车时间接口没有返回任何发车时间，说明该线路未来几天没有发车计划，
+	此时按「暂无发车计划」输出（departure 为 null、dates 为空、has_schedule 为 false），
+	不再用站点时刻兜底成班次。
 	"""
 	notes = warnings if warnings is not None else []
 	processed_routes: list[dict[str, Any]] = []
@@ -294,15 +298,23 @@ def build_processed_payload(
 
 		schedule = schedule_by_route_id.get(route_id) or {}
 		departures = sorted(schedule)
-		if base_minutes is None:
-			if departures:
-				notes.append(f"线路 {route_id} 缺少可用的站点时刻，已按发车时间原样输出")
-			departures = departures or [None]
-		elif base_time not in departures:
-			notes.append(
-				f"线路 {route_id} 的站点时刻（{base_time}）不在发车时间列表 {departures} 中，已按单班次输出"
+		if not departures:
+			notes.append(f"线路 {route_id} 未来几天没有发车计划，已按「暂无发车计划」输出")
+			processed_routes.append(
+				{
+					"id": route_id,
+					"uid": str(route_id),
+					"departure": None,
+					"dates": [],
+					"has_schedule": False,
+					"route_name": route.get("name"),
+					"bus_id": route.get("bus_id"),
+					"stops": stops,
+				}
 			)
-			departures = [base_time]
+			continue
+		if base_minutes is None:
+			notes.append(f"线路 {route_id} 缺少可用的站点时刻，已按发车时间原样输出")
 
 		for departure in departures:
 			offset = 0
@@ -313,9 +325,10 @@ def build_processed_payload(
 			processed_routes.append(
 				{
 					"id": route_id,
-					"uid": f"{route_id}@{departure}" if departure else str(route_id),
+					"uid": f"{route_id}@{departure}",
 					"departure": departure,
-					"dates": list(schedule.get(departure, [])) if isinstance(departure, str) else [],
+					"dates": list(schedule.get(departure, [])),
+					"has_schedule": True,
 					"route_name": route.get("name"),
 					"bus_id": route.get("bus_id"),
 					"stops": [{**stop, "time": shift_time(stop["time"], offset)} for stop in stops],
@@ -369,7 +382,7 @@ def main() -> int:
 					f"{time_text}（{len(dates)} 天）" for time_text, dates in schedule.items()
 				)
 				if schedule
-				else "未返回发车时间"
+				else "暂无发车计划"
 			)
 			print(
 				f"[{index}/{len(routes)}] 线路 {route_id} 详情已保存: {output_path}"
