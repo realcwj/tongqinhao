@@ -46,5 +46,8 @@ jobs:
           fi
 
           git commit -m "chore: 自动更新线路数据 $(TZ=Asia/Shanghai date +%F)"
-          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+
+          # 若期间远端有了新提交（比如你刚在本地推送了改动）：rebase 并以刚抓取的数据为准自动解冲突，
+          # 避免定时任务因为 processed.json 的内容冲突而失败（数据文件由脚本生成，以后抓到的为准）
+          git pull --rebase --autostash -X theirs origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
