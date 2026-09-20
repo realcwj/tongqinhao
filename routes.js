@@ -53,6 +53,11 @@ function normalizeRoute(route) {
   };
 }
 
+// 同一线路可能有多个发车班次，用 uid（线路 ID + 发车时间）保证卡片与 DOM id 唯一
+function routeKey(route) {
+  return route?.uid || String(route?.id);
+}
+
 function renderRoutes() {
   const nowMinutes = currentMinutes();
   const routes = state.routes
@@ -80,7 +85,7 @@ function currentMinutes() {
 }
 
 function routeCardHtml(route, nowMinutes) {
-  const detailsId = `route-${route.id}-${route.firstRegion}-${route.lastRegion}`;
+  const detailsId = `route-${routeKey(route)}-${route.firstRegion}-${route.lastRegion}`;
   const status = vehicleStatus(route.stops, new Date());
   const first = route.stops[0];
   const last = route.stops[route.stops.length - 1];
@@ -94,7 +99,7 @@ function routeCardHtml(route, nowMinutes) {
     ? `${regionLabel(route.firstRegion)}区域线路`
     : `${regionLabel(route.firstRegion)} → ${regionLabel(route.lastRegion)}`;
   return `<article class="directory-card">
-    <button type="button" class="directory-card__summary" data-route-id="${route.id}" aria-expanded="false" aria-controls="${detailsId}">
+    <button type="button" class="directory-card__summary" data-route-id="${routeKey(route)}" aria-expanded="false" aria-controls="${detailsId}">
       <span class="directory-card__time"><strong>${escapeHtml(first?.time || "--:--")}</strong><small>${isNextDay ? "次日始发" : "始发"}</small></span>
       <span class="directory-card__main"><strong>${escapeHtml(route.route_name)}</strong><small>${escapeHtml(first?.name || "未知站点")} → ${escapeHtml(last?.name || "未知站点")}</small></span>
       <span class="direction-chip direction-chip--${route.firstRegion}">${directionText}</span>

@@ -601,6 +601,11 @@ function matchesDropOffFilter(allowedStops) {
   return allowedStops.some((dropStop) => selectedDropOffKeys.has(stopKeyFromRaw(dropStop)));
 }
 
+// 同一线路可能有多个发车班次，用 uid（线路 ID + 发车时间）区分，避免班次被合并成一张卡片
+function routeKey(route) {
+  return route?.uid || String(route?.id);
+}
+
 // 同一线路在本区域可能有多个可上车站点，合并为一张卡片（时间列显示“07:32 或 07:36”）
 function addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, allowedStops, nowMinutes, isEntry) {
   const departureMinutes = parseTime(boardingStop.time);
@@ -612,7 +617,7 @@ function addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, all
     isNextDay,
     minutesUntil: isNextDay ? departureMinutes + 1440 - nowMinutes : departureMinutes - nowMinutes,
   };
-  let item = routeDepartures.get(route.id);
+  let item = routeDepartures.get(routeKey(route));
   if (!item) {
     item = {
       route,
@@ -623,7 +628,7 @@ function addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, all
       isNextDay: leg.isNextDay,
       isEntry,
     };
-    routeDepartures.set(route.id, item);
+    routeDepartures.set(routeKey(route), item);
   }
   if (item.boardingStops.some((existing) => existing.stop.time === leg.stop.time)) return;
   item.boardingStops.push(leg);
@@ -646,7 +651,7 @@ function mergeStopList(target, stops) {
 }
 
 function departureHtml(item, index) {
-  const detailsId = `route-details-${item.route.id}-${index}`;
+  const detailsId = `route-details-${routeKey(item.route)}-${index}`;
   const statusLabel = vehicleStatus(item.route.stops, new Date(), item.isNextDay);
   const departureText = item.minutesUntil === 0 ? "即将发车" : `${item.minutesUntil} 分钟后`;
   const timeLabel = item.boardingStops
