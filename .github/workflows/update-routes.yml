@@ -1,0 +1,50 @@
+name: 更新线路数据
+
+# 每天北京时间 02:00（= UTC 前一天 18:00）自动抓取通琴号班次数据。
+# 说明：仓库位于 UTC 时区，cron 使用 UTC；GitHub 的定时任务在高峰期可能延迟几分钟到半小时。
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  # 也可以在 Actions 页面手动触发（便于验证或补数据）
+  workflow_dispatch:
+
+# 允许 workflow 把更新后的数据提交回仓库
+permissions:
+  contents: write
+
+# 同一时间只跑一次，避免两次提交互相覆盖
+concurrency:
+  group: update-routes
+  cancel-in-progress: false
+
+jobs:
+  update-routes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 抓取并整理线路数据
+        run: python get_all_route.py
+
+      - name: 提交数据更新
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # 只提交前端使用的数据与同步日期；json/ 原始快照保持忽略（避免仓库膨胀）
+          git add processed.json config.js
+
+          if git diff --cached --quiet; then
+            echo "数据没有变化，跳过提交"
+            exit 0
+          fi
+
+          git commit -m "chore: 自动更新线路数据 $(TZ=Asia/Shanghai date +%F)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

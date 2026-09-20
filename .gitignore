@@ -1,4 +1,5 @@
-get_all_route.py
+# 抓取脚本需随仓库提交，供 GitHub Actions 每天自动执行
 json/
+__pycache__/
 .venv/
 .vscode/

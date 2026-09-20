@@ -31,15 +31,40 @@
 ## 📦 项目结构
 
 ```
+├── .github/workflows/  # 定时任务：每天北京时间 02:00 自动更新线路数据
 ├── index.html          # 通勤助手主页
 ├── routes.html         # 全部跨境线路页
 ├── config.js           # 全站配置：数据同步日期/链接、数据源、附近范围与条数等参数
 ├── app-v2.js           # 主页逻辑（定位、选择、班次查询）
 ├── routes.js           # 线路页逻辑
 ├── styles.css          # 全局样式
-├── processed.json      # 前端唯一业务数据源
-├── get_all_route.py    # 数据抓取与整理脚本（*暂不提供）
-└── json/               # 抓取原始 JSON（*暂不提供）
+├── processed.json      # 前端唯一业务数据源（每日自动更新）
+├── get_all_route.py    # 数据抓取与整理脚本（由 GitHub Actions 每天自动执行）
+└── json/               # 抓取原始 JSON 快照（仅本地生成，不提交仓库）
+```
+
+## 🔄 数据自动更新
+
+`processed.json` 由 `get_all_route.py` 抓取通琴号接口生成，并由 `.github/workflows/update-routes.yml` 每天**北京时间 02:00**（UTC 18:00）自动执行一次，随后把变更提交回仓库；也可以在 GitHub 的 Actions 页面手动触发（`workflow_dispatch`）。
+
+每次运行会重新抓取全部线路，并按发车班次整理数据：
+
+| 字段 | 说明 |
+| --- | --- |
+| `id` | 原线路 ID（同一线路的多个班次共用一个 ID） |
+| `uid` | 班次唯一标识，格式 `线路ID@发车时间`，前端据此区分同线路的不同班次 |
+| `departure` | 该班次的发车时间（`HH:MM`） |
+| `dates` | 该班次未来几天的开行日期（`YYYY-MM-DD`，取自发车时间接口） |
+| `route_name` | 线路名称（保持接口原名） |
+| `bus_id` | 车辆/线路业务标识 |
+| `stops` | 该班次各站点的时刻与坐标（站点接口只返回当前班次，脚本按发车时间整体平移得到各班次时刻） |
+
+运行结束后还会把 `config.js` 中的 `DATA_SYNC_DATE` 更新为运行当天（北京时间），页面顶部「数据同步」胶囊随之更新。`json/` 目录中的接口原始快照只在运行环境本地生成，不提交仓库。
+
+本地手动运行（需要能访问通琴号接口）：
+
+```bash
+python get_all_route.py
 ```
 
 ## 🚀 本地运行

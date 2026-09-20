@@ -1,6 +1,6 @@
 // ===== 数据源 =====
 // 数据同步日期（顶部「数据同步」胶囊文案）
-const DATA_SYNC_DATE = "2026-09-18";
+const DATA_SYNC_DATE = "2026-09-20";
 
 // 数据文件地址（顶部「数据同步」胶囊跳转目标）
 const DATA_SYNC_URL = "https://github.com/realcwj/tongqinhao/blob/main/processed.json";
