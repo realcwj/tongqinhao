@@ -31,7 +31,7 @@ async function init() {
     const response = await fetch(DATA_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    state.routes = crossBorderRoutes(data).map(normalizeRoute);
+    state.crossBorderRoutes = extractCrossBorderRoutes(data).map(normalizeRoute);
     renderRoutes();
   } catch (error) {
     els.count.textContent = "加载失败";
@@ -40,7 +40,7 @@ async function init() {
 }
 
 // processed.json 把跨境线与境内线分两个大类存储；页面只使用跨境线（兼容旧格式）
-function crossBorderRoutes(data) {
+function extractCrossBorderRoutes(data) {
   const labels = data?.cross_border?.labels;
   if (Array.isArray(labels)) return labels.flatMap((label) => label.routes || []);
   return data?.routes || [];
@@ -67,14 +67,14 @@ function routeKey(route) {
 
 function renderRoutes() {
   const now = new Date();
-  const routes = state.routes
+  const routes = state.crossBorderRoutes
     .filter((route) => {
       const matchesFilter = state.filter === "all" || route.direction === state.filter;
       const matchesSearch = !state.query || route.searchText.includes(state.query);
       return matchesFilter && matchesSearch;
     })
     .sort((a, b) => minutesUntilDeparture(a, now) - minutesUntilDeparture(b, now));
-  els.count.textContent = `${routes.length} / ${state.routes.length} 条`;
+  els.count.textContent = `${routes.length} / ${state.crossBorderRoutes.length} 条`;
   els.empty.hidden = routes.length > 0;
   els.directory.innerHTML = routes.map((route) => routeCardHtml(route, now)).join("");
 }
