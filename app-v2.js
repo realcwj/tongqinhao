@@ -11,11 +11,16 @@ const state = {
   selectedDropOffStops: [],
   availableDropOffStops: [],
   locationRequested: false,
+  // 已展开的班次（用 uid 标识，跨定时刷新稳定）
+  expandedDepartureUids: new Set(),
 };
 
 const els = {};
 // 当前渲染的班次列表（展开卡片时按需取用站点时刻）
 let renderedDepartures = [];
+// 上一次渲染的班次 uid 顺序与结构签名，用于判断能否只做增量刷新
+let renderedDepartureUids = [];
+let renderedStructureKey = "";
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -25,7 +30,8 @@ async function init() {
   updateClock();
   window.setInterval(() => {
     updateClock();
-    renderDepartures();
+    // 每 30 秒只刷新倒计时/车辆状态等动态字段，不重建列表
+    renderDepartures({ liveOnly: true });
   }, 30_000);
 
   try {
@@ -116,13 +122,22 @@ function bindEvents() {
   els.departureList.addEventListener("click", (event) => {
     const toggle = event.target.closest("[data-route-toggle]");
     if (!toggle) return;
+    const card = toggle.closest(".departure-card");
     const details = document.querySelector(`#${CSS.escape(toggle.getAttribute("aria-controls"))}`);
     const expanded = toggle.getAttribute("aria-expanded") === "true";
-    toggle.setAttribute("aria-expanded", String(!expanded));
-    toggle.querySelector("span:last-child").textContent = expanded ? "+" : "−";
+    const nextExpanded = !expanded;
+    toggle.setAttribute("aria-expanded", String(nextExpanded));
+    toggle.querySelector("span:last-child").textContent = nextExpanded ? "−" : "+";
+    card?.classList.toggle("departure-card--expanded", nextExpanded);
+    const item = renderedDepartures[Number(card?.dataset.departureIndex)];
+    if (item) {
+      const uid = routeKey(item.route);
+      if (nextExpanded) state.expandedDepartureUids.add(uid);
+      else state.expandedDepartureUids.delete(uid);
+    }
     if (!details) return;
-    if (!expanded) renderTimeline(details);
-    details.hidden = expanded;
+    if (nextExpanded) renderTimeline(details);
+    details.hidden = !nextExpanded;
   });
 }
 
@@ -517,7 +532,7 @@ function quickSelect(mode) {
   document.querySelector(".departures-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function renderDepartures() {
+function renderDepartures({ liveOnly = false } = {}) {
   const direction = state.currentRegion && state.destinationRegion ? `${state.currentRegion}-${state.destinationRegion}` : null;
   const hasNormalBoarding = Boolean(direction) && state.selectedStops.some((stop) => stop.boardingDirections.has(direction));
   const hasEntryBoarding = Boolean(direction) && state.selectedStops.some((stop) => stop.entryBoardingDirections.has(direction));
@@ -531,10 +546,55 @@ function renderDepartures() {
     els.selectedContext.textContent = state.currentRegion ? "请选择上车站点" : "请选择当前所在区域和上车站点";
     els.departureList.innerHTML = "";
     els.departureEmpty.hidden = false;
+    renderedDepartures = [];
+    renderedDepartureUids = [];
+    renderedStructureKey = "";
     return;
   }
 
   const now = new Date();
+  const departures = buildDepartures(direction, now);
+  const structureKey = departures.map(departureStructureKey).join("||");
+
+  // 定时刷新：班次结构没变时只更新倒计时/车辆状态，保留展开状态、时间轴与滚动位置
+  if (liveOnly && structureKey === renderedStructureKey) {
+    renderedDepartures = departures;
+    updateDepartureLiveFields(departures, now);
+    return;
+  }
+
+  const selectedNames = state.selectedStops.map((stop) => escapeHtml(stop.name)).join("、");
+  let contextText = `从 <strong>${selectedNames}</strong> 出发`;
+  if (state.selectedDropOffStops.length) {
+    const dropOffNames = state.selectedDropOffStops.map((stop) => escapeHtml(stop.name)).join("、");
+    contextText += ` · 到 <strong>${dropOffNames}</strong> 下车`;
+  }
+  const entryCount = departures.filter((item) => item.isEntry).length;
+  contextText += ` · ${scopeSummary(departures.length - entryCount, entryCount)} · ${departures.length} 个班次`;
+  els.selectedContext.innerHTML = contextText;
+  els.departureEmpty.hidden = departures.length > 0;
+
+  const uids = departures.map((item) => routeKey(item.route));
+  const sameList = uids.length === renderedDepartureUids.length && uids.every((uid, index) => uid === renderedDepartureUids[index]);
+  const keptExpanded = new Set([...state.expandedDepartureUids].filter((uid) => uids.includes(uid)));
+  if (!sameList && !liveOnly) {
+    // 用户切换了站点/筛选条件：视为新的一批班次，默认展开第一条
+    state.expandedDepartureUids = new Set(uids.length ? [uids[0]] : []);
+  } else {
+    // 定时刷新或同一批班次重绘：保留用户已有的展开状态
+    if (!keptExpanded.size && uids.length) keptExpanded.add(uids[0]);
+    state.expandedDepartureUids = keptExpanded;
+  }
+
+  renderedDepartures = departures;
+  renderedDepartureUids = uids;
+  renderedStructureKey = structureKey;
+  els.departureList.innerHTML = departures
+    .map((item, index) => departureHtml(item, index, state.expandedDepartureUids.has(routeKey(item.route)), now))
+    .join("");
+}
+
+function buildDepartures(direction, now) {
   const routeDepartures = new Map();
   state.crossBorderRoutes.forEach((route) => {
     // 未来几天没有发车计划的线路不参与班次查询
@@ -559,20 +619,35 @@ function renderDepartures() {
     if (!allowedStops.length || !matchesDropOffFilter(allowedStops)) return;
     addBoardingLeg(routeDepartures, route, entry.stop, entry.index, allowedStops, now, true);
   });
-  const departures = [...routeDepartures.values()].sort((a, b) => a.minutesUntil - b.minutesUntil);
+  return [...routeDepartures.values()].sort((a, b) => a.minutesUntil - b.minutesUntil);
+}
 
-  const selectedNames = state.selectedStops.map((stop) => escapeHtml(stop.name)).join("、");
-  let contextText = `从 <strong>${selectedNames}</strong> 出发`;
-  if (state.selectedDropOffStops.length) {
-    const dropOffNames = state.selectedDropOffStops.map((stop) => escapeHtml(stop.name)).join("、");
-    contextText += ` · 到 <strong>${dropOffNames}</strong> 下车`;
-  }
-  const entryCount = departures.filter((item) => item.isEntry).length;
-  contextText += ` · ${scopeSummary(departures.length - entryCount, entryCount)} · ${departures.length} 个班次`;
-  els.selectedContext.innerHTML = contextText;
-  els.departureEmpty.hidden = departures.length > 0;
-  renderedDepartures = departures;
-  els.departureList.innerHTML = departures.map(departureHtml).join("");
+// 班次卡片的结构签名：签名不变时无需重建 DOM
+function departureStructureKey(item) {
+  const legs = item.boardingStops.map((leg) => `${leg.stop.time}@${leg.dateText}`).join(",");
+  return `${routeKey(item.route)}|${legs}|${item.isEntry ? "entry" : "normal"}`;
+}
+
+// 只更新随时间变化的文本，不触碰卡片结构
+function updateDepartureLiveFields(departures, now) {
+  departures.forEach((item, index) => {
+    const card = els.departureList.querySelector(`[data-departure-index="${index}"]`);
+    if (!card) return;
+    const statusEl = card.querySelector('[data-live="status"]');
+    if (statusEl) statusEl.textContent = departureStatusLabel(item, now);
+    const countdownEl = card.querySelector('[data-live="countdown"]');
+    if (countdownEl) countdownEl.textContent = departureCountdownLabel(item);
+    card.classList.toggle("is-next", index === 0);
+  });
+}
+
+function departureStatusLabel(item, now) {
+  return item.dayOffset === 0 ? vehicleStatus(item.route.stops, now) : "未发车";
+}
+
+function departureCountdownLabel(item) {
+  if (item.minutesUntil === 0) return "即将发车";
+  return item.dayOffset > 0 ? `${item.dayOffset} 天后` : `${item.minutesUntil} 分钟后`;
 }
 
 function scopeSummary(forwardCount, entryCount) {
@@ -699,15 +774,8 @@ function mergeStopList(target, stops) {
   });
 }
 
-function departureHtml(item, index) {
+function departureHtml(item, index, expanded, now) {
   const detailsId = `route-details-${routeKey(item.route)}-${index}`;
-  const isToday = item.dayOffset === 0;
-  const statusLabel = isToday ? vehicleStatus(item.route.stops, new Date()) : "未发车";
-  const departureText = item.minutesUntil === 0
-    ? "即将发车"
-    : item.dayOffset > 0
-      ? `${item.dayOffset} 天后`
-      : `${item.minutesUntil} 分钟后`;
   const dayPrefix = (leg) => (leg.dayOffset === 1
     ? '<span class="departure-card__day">次日</span> '
     : leg.dayOffset > 1
@@ -722,15 +790,15 @@ function departureHtml(item, index) {
   const boardingStops = item.boardingStops
     .map((leg) => `${boardingDayPrefix(leg)}${escapeHtml(leg.stop.time || "--:--")} ${escapeHtml(leg.stop.name)}`)
     .join("、");
-  return `<article class="departure-card departure-card--expanded${index === 0 ? " is-next" : ""}${item.isEntry ? " departure-card--entry" : ""}" data-departure-index="${index}">
+  return `<article class="departure-card${expanded ? " departure-card--expanded" : ""}${index === 0 ? " is-next" : ""}${item.isEntry ? " departure-card--entry" : ""}" data-departure-index="${index}">
     <div class="departure-card__summary">
       <div class="departure-card__time${item.boardingStops.length > 1 ? " departure-card__time--multi" : ""}"><strong>${timeLabel}</strong><small>${escapeHtml(item.route.route_name)}</small></div>
-      <div class="departure-card__route"><strong>${escapeHtml(statusLabel)}</strong><span>${routePath}</span><span class="departure-card__boarding">可上车站点：${boardingStops}</span></div>
-      <div class="departure-card__countdown"><strong>${departureText}</strong><small>${item.isEntry ? "口岸上车" : "本站发车"}</small></div>
-      <button class="route-toggle" type="button" data-route-toggle aria-expanded="${index === 0}" aria-controls="${detailsId}"><span>站点列表</span><span>${index === 0 ? "−" : "+"}</span></button>
+      <div class="departure-card__route"><strong data-live="status">${escapeHtml(departureStatusLabel(item, now))}</strong><span>${routePath}</span><span class="departure-card__boarding">可上车站点：${boardingStops}</span></div>
+      <div class="departure-card__countdown"><strong data-live="countdown">${escapeHtml(departureCountdownLabel(item))}</strong><small>${item.isEntry ? "口岸上车" : "本站发车"}</small></div>
+      <button class="route-toggle" type="button" data-route-toggle aria-expanded="${expanded}" aria-controls="${detailsId}"><span>站点列表</span><span>${expanded ? "−" : "+"}</span></button>
     </div>
-    <div class="route-details" id="${detailsId}"${index === 0 ? ' data-rendered="1"' : " hidden"}>
-      ${index === 0 ? timelineHtml(item) : ""}
+    <div class="route-details" id="${detailsId}"${expanded ? ' data-rendered="1"' : " hidden"}>
+      ${expanded ? timelineHtml(item) : ""}
     </div>
   </article>`;
 }
