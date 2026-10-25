@@ -1,5 +1,6 @@
 const state = {
   data: null,
+  routes: [],
   stops: [],
   userPosition: null,
   currentRegion: null,
@@ -31,8 +32,9 @@ async function init() {
     const response = await fetch(DATA_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`数据加载失败（HTTP ${response.status}）`);
     state.data = await response.json();
-    state.stops = buildStationCatalog(state.data.routes || []);
-    if (els.routesButtonHint) els.routesButtonHint.textContent = `${(state.data.routes || []).length} 条线路总览`;
+    state.routes = crossBorderRoutes(state.data);
+    state.stops = buildStationCatalog(state.routes);
+    if (els.routesButtonHint) els.routesButtonHint.textContent = `${state.routes.length} 条线路总览`;
     els.locationHint.textContent = `共收录 ${state.stops.length} 个站点，定位后自动判断所在区域`;
     setLocationState("等待获取位置，也可以先手动选择所在区域", false);
     if (state.currentRegion) setCurrentRegion(state.currentRegion, false);
@@ -122,6 +124,13 @@ function bindEvents() {
     if (!expanded) renderTimeline(details);
     details.hidden = expanded;
   });
+}
+
+// processed.json 把跨境线与境内线分两个大类存储；页面只使用跨境线（兼容旧格式）
+function crossBorderRoutes(data) {
+  const labels = data?.cross_border?.labels;
+  if (Array.isArray(labels)) return labels.flatMap((label) => label.routes || []);
+  return data?.routes || [];
 }
 
 function buildStationCatalog(routes) {
@@ -403,7 +412,7 @@ function computeAvailableDropOffStops() {
   if (els.manualDropOffWrap) els.manualDropOffWrap.hidden = false;
   const direction = `${state.currentRegion}-${state.destinationRegion}`;
   const reachableKeys = new Set();
-  (state.data.routes || []).forEach((route) => {
+  state.routes.forEach((route) => {
     if (route.has_schedule === false) return;
     const routeDirection = getRouteDirection(route);
     if (routeDirection === direction) {
@@ -527,7 +536,7 @@ function renderDepartures() {
 
   const now = new Date();
   const routeDepartures = new Map();
-  (state.data.routes || []).forEach((route) => {
+  state.routes.forEach((route) => {
     // 未来几天没有发车计划的线路不参与班次查询
     if (route.has_schedule === false) return;
     const routeDirection = getRouteDirection(route);

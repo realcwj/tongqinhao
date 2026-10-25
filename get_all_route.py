@@ -418,15 +418,25 @@ def build_processed_payload(
 ) -> dict[str, Any]:
 	"""组装最终写入 processed.json 的内容。
 
-	`routes` 仍只放跨境通勤线（label 7），保持前端现有读取方式不变；
-	境内线路按标签记录在 `domestic_labels` 中，暂不参与前端展示。
+	跨境线与境内线分两个大类存储，每个大类下按标签分组，每个标签内是班次条目：
+
+	{
+	  "cross_border": {"label_count": 1, "route_count": N, "labels": [标签...]},
+	  "domestic": {"label_count": 7, "route_count": M, "labels": [标签...]}
+	}
 	"""
+	cross_border_labels = [cross_border]
 	return {
-		"label_id": cross_border["label_id"],
-		"label_name": cross_border["label_name"],
-		"route_count": cross_border["route_count"],
-		"routes": cross_border["routes"],
-		"domestic_labels": domestic_labels,
+		"cross_border": {
+			"label_count": len(cross_border_labels),
+			"route_count": sum(item["route_count"] for item in cross_border_labels),
+			"labels": cross_border_labels,
+		},
+		"domestic": {
+			"label_count": len(domestic_labels),
+			"route_count": sum(item["route_count"] for item in domestic_labels),
+			"labels": domestic_labels,
+		},
 	}
 
 
@@ -561,6 +571,35 @@ def load_json(output_path: Path) -> Any | None:
 		return None
 
 
+def previous_label_payload(
+	payload: dict[str, Any],
+	section: str,
+	label_id: int,
+) -> dict[str, Any] | None:
+	"""从已有的 processed.json 中取出某个标签的旧数据（兼容旧格式）。"""
+	if section == "cross_border" and isinstance(payload.get("routes"), list):
+		# 旧格式：跨境线数据直接放在顶层
+		return {
+			"label_id": payload.get("label_id", label_id),
+			"label_name": payload.get("label_name"),
+			"routes": payload["routes"],
+		}
+	if section == "domestic" and isinstance(payload.get("domestic_labels"), list):
+		# 旧格式：境内线放在 domestic_labels 数组里
+		for item in payload["domestic_labels"]:
+			if isinstance(item, dict) and item.get("label_id") == label_id:
+				return item
+
+	section_data = payload.get(section)
+	if isinstance(section_data, dict):
+		labels = section_data.get("labels")
+		if isinstance(labels, list):
+			for item in labels:
+				if isinstance(item, dict) and item.get("label_id") == label_id:
+					return item
+	return None
+
+
 def run_update() -> int:
 	"""抓取跨境线与境内线，按线路与旧数据合并后写入 processed.json。"""
 	warnings: list[str] = []
@@ -572,7 +611,7 @@ def run_update() -> int:
 
 	cross_border = update_label(
 		DEFAULT_LABEL_ID,
-		previous_payload,
+		previous_label_payload(previous_payload, "cross_border", DEFAULT_LABEL_ID),
 		warnings,
 		today,
 		verbose=True,
@@ -580,18 +619,11 @@ def run_update() -> int:
 	if cross_border is None:
 		raise RouteApiError(f"无法获取跨境通勤线（label {DEFAULT_LABEL_ID}）的线路列表")
 
-	previous_domestic = previous_payload.get("domestic_labels")
-	previous_domestic_by_label: dict[int, dict[str, Any]] = {}
-	if isinstance(previous_domestic, list):
-		for item in previous_domestic:
-			if isinstance(item, dict) and isinstance(item.get("label_id"), int):
-				previous_domestic_by_label[item["label_id"]] = item
-
 	domestic_labels: list[dict[str, Any]] = []
 	for label_id in DOMESTIC_LABEL_IDS:
 		label_data = update_label(
 			label_id,
-			previous_domestic_by_label.get(label_id),
+			previous_label_payload(previous_payload, "domestic", label_id),
 			warnings,
 			today,
 			verbose=False,

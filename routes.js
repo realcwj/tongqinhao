@@ -31,12 +31,19 @@ async function init() {
     const response = await fetch(DATA_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    state.routes = (data.routes || []).map(normalizeRoute);
+    state.routes = crossBorderRoutes(data).map(normalizeRoute);
     renderRoutes();
   } catch (error) {
     els.count.textContent = "加载失败";
     els.directory.innerHTML = `<div class="empty-state"><div class="empty-state__icon">!</div><h3>线路数据加载失败</h3><p>请通过 GitHub Pages 或静态服务器访问。</p></div>`;
   }
+}
+
+// processed.json 把跨境线与境内线分两个大类存储；页面只使用跨境线（兼容旧格式）
+function crossBorderRoutes(data) {
+  const labels = data?.cross_border?.labels;
+  if (Array.isArray(labels)) return labels.flatMap((label) => label.routes || []);
+  return data?.routes || [];
 }
 
 function normalizeRoute(route) {

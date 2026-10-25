@@ -62,13 +62,35 @@
 
 若发车时间接口未返回任何发车时间，说明该线路未来几天没有发车计划，脚本会输出 `has_schedule: false` 的条目（不再用站点时刻兜底成班次），总览页显示「暂无发车计划」，也不会出现在「后续班次」查询结果中。
 
-`processed.json` 的文件结构：
+`processed.json` 按「跨境线 / 境内线」两个大类存储，每个大类下再按标签分组：
 
-| 字段 | 说明 |
-| --- | --- |
-| `label_id` / `label_name` | 前端展示的线路标签（固定为 `7` / 跨境通勤线） |
-| `route_count` / `routes` | 跨境通勤线的班次（前端只读取这里） |
-| `domestic_labels` | 额外记录的境内线路，按标签分组（`3` 夜间线、`4` 金融岛线、`5` 港澳大道线、`6` 横琴大道线、`8` 环岛东路线、`10` 长隆大道线、`11` 环岛北路线），每组含 `label_id` / `label_name` / `route_count` / `routes`，条目结构与 `routes` 完全一致；前端暂不展示 |
+```json
+{
+  "cross_border": {
+    "label_count": 1,
+    "route_count": 88,
+    "labels": [
+      { "label_id": 7, "label_name": "跨境通勤线", "route_count": 88, "routes": [ ... ] }
+    ]
+  },
+  "domestic": {
+    "label_count": 7,
+    "route_count": 229,
+    "labels": [
+      { "label_id": 3, "label_name": "夜间线", "route_count": 10, "routes": [ ... ] },
+      { "label_id": 4, "label_name": "金融岛线", "route_count": 43, "routes": [ ... ] },
+      { "label_id": 5, "label_name": "港澳大道线", "route_count": 20, "routes": [ ... ] },
+      { "label_id": 6, "label_name": "横琴大道线", "route_count": 21, "routes": [ ... ] },
+      { "label_id": 8, "label_name": "环岛东路线", "route_count": 74, "routes": [ ... ] },
+      { "label_id": 10, "label_name": "长隆大道线", "route_count": 16, "routes": [ ... ] },
+      { "label_id": 11, "label_name": "环岛北路线", "route_count": 45, "routes": [ ... ] }
+    ]
+  }
+}
+```
+
+- 前端只读取 `cross_border.labels[*].routes`（当前只有 label 7），`domestic` 暂不展示。
+- 每个 `routes` 数组中的班次条目字段见上表。
 
 ### 数据合并与容错
 
