@@ -345,10 +345,10 @@ function renderNearbyStations() {
 }
 
 function stationCardHtml(stop, closest) {
-  return `<button class="station-card${state.selectedStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-nearby-stop="${stop.key}">
+  return `<button class="station-card${state.selectedStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-region="${stop.region}" data-nearby-stop="${stop.key}">
     <div class="station-card__top"><span class="station-kind ${stop.region === "2" ? "station-kind--macau" : stop.region === "3" ? "station-kind--zhuhai" : ""}">${regionLabel(stop.region)}站点</span><span class="distance">${closest ? "最近 · " : ""}${formatDistance(stop.distanceKm)}</span></div>
     <h3>${escapeHtml(stop.name)}</h3>
-    <div class="station-card__bottom"><span>${stop.entryBoardingDirections?.size ? "口岸站可上车" : "可查询该站点班次"}</span><span class="station-card__check">✓</span></div>
+    <span class="station-card__check">✓</span>
   </button>`;
 }
 

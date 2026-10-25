@@ -13,7 +13,7 @@ const DATA_URL = "processed.json";
 const MAX_DISTANCE_KM = 1;
 
 // 附近站点列表、「附近」快速选择最多取用的站点数
-const MAX_NEARBY_STATIONS = 5;
+const MAX_NEARBY_STATIONS = 6;
 
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-sync-pill]").forEach((pill) => {

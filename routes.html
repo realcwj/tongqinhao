@@ -3,19 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0b1220" />
+  <meta name="theme-color" content="#e7e9e8" />
+  <meta name="color-scheme" content="light" />
   <meta name="description" content="通琴号全部横琴、澳门、珠海通勤线路" />
   <title>全部线路 · 通琴号</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261025-mobile-picker" />
+  <link rel="stylesheet" href="styles.css?v=20261026-palette-unify6" />
 </head>
 <body class="routes-page">
+  <div class="ambient" aria-hidden="true">
+    <span class="ambient__orb ambient__orb--mint"></span>
+    <span class="ambient__orb ambient__orb--sky"></span>
+    <span class="ambient__orb ambient__orb--lavender"></span>
+    <span class="ambient__orb ambient__orb--peach"></span>
+    <span class="ambient__orb ambient__orb--aqua"></span>
+    <span class="ambient__orb ambient__orb--rose"></span>
+  </div>
+  <svg class="glass-defs" aria-hidden="true" focusable="false">
+    <filter id="glass-distort" x="-15%" y="-15%" width="130%" height="130%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.011" numOctaves="2" seed="7" result="noise" />
+      <feGaussianBlur in="noise" stdDeviation="1.4" result="soft" />
+      <feDisplacementMap in="SourceGraphic" in2="soft" scale="30" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
   <div class="page-shell">
     <header class="routes-hero">
       <nav class="topbar" aria-label="主导航">
-        <a class="brand" href="./" aria-label="通琴号首页">
+        <a class="brand" href="./index.html" aria-label="通琴号首页">
           <span class="brand__mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" focusable="false">
               <path d="M4 6.5h16a2 2 0 0 1 2 2V17H2V8.5a2 2 0 0 1 2-2Z"></path>
@@ -41,12 +57,22 @@
       <div class="routes-hero__content">
         <div class="routes-hero__intro">
           <span class="section-kicker">ROUTE DIRECTORY</span>
-          <h1>全部线路</h1>
+          <h1>全部<em>线路</em></h1>
           <p>横琴、澳门、珠海三地双向通勤班次及完整站点时刻</p>
+          <div class="region-legend" aria-label="三地配色">
+            <span class="region-legend__item region-legend__item--hengqin"><i></i>横琴</span>
+            <span class="region-legend__item region-legend__item--macau"><i></i>澳门</span>
+            <span class="region-legend__item region-legend__item--zhuhai"><i></i>珠海</span>
+          </div>
         </div>
         <a class="routes-button routes-button--back" href="index.html" aria-label="返回主页查询后续班次">
-          <span class="routes-button__icon">←</span>
+          <span class="routes-button__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>
+          </span>
           <span><strong>返回主页</strong><small>查询后续班次</small></span>
+          <span class="routes-button__arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+          </span>
         </a>
       </div>
     </header>
@@ -54,7 +80,9 @@
     <main class="routes-main">
       <section class="route-toolbar" aria-label="线路筛选">
         <label class="route-search" for="routeSearch">
-          <span aria-hidden="true">⌕</span>
+          <span class="search-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" focusable="false"><circle cx="9" cy="9" r="5.2"/><path d="m13 13 3.4 3.4"/></svg>
+          </span>
           <input id="routeSearch" type="search" placeholder="搜索线路或站点" autocomplete="off" />
         </label>
         <div class="route-filters" id="routeFilters" role="group" aria-label="线路方向">
@@ -83,7 +111,7 @@
       <span><a href="index.html">返回通勤助手</a> · <a href="https://github.com/realcwj/tongqinhao" target="_blank" rel="noopener">GitHub 仓库</a> · 数据来源于公开接口</span>
     </footer>
   </div>
-  <script src="config.js?v=20260918-uncap1" defer></script>
-  <script src="routes.js?v=20261025-label-name" defer></script>
+  <script src="config.js?v=20261026-palette-unify1" defer></script>
+  <script src="routes.js?v=20261026-palette-unify1" defer></script>
 </body>
 </html>

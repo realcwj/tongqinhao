@@ -3,21 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0b1220" />
+  <meta name="theme-color" content="#e7e9e8" />
+  <meta name="color-scheme" content="light" />
   <meta name="description" content="通琴号跨境通勤实时站点与班次查询" />
   <title>通琴号 · 跨岛通勤助手</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261025-mobile-picker" />
+  <link rel="stylesheet" href="styles.css?v=20261026-palette-unify6" />
 </head>
 <body>
+  <div class="ambient" aria-hidden="true">
+    <span class="ambient__orb ambient__orb--mint"></span>
+    <span class="ambient__orb ambient__orb--sky"></span>
+    <span class="ambient__orb ambient__orb--lavender"></span>
+    <span class="ambient__orb ambient__orb--peach"></span>
+    <span class="ambient__orb ambient__orb--aqua"></span>
+    <span class="ambient__orb ambient__orb--rose"></span>
+  </div>
+  <svg class="glass-defs" aria-hidden="true" focusable="false">
+    <filter id="glass-distort" x="-15%" y="-15%" width="130%" height="130%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.011" numOctaves="2" seed="7" result="noise" />
+      <feGaussianBlur in="noise" stdDeviation="1.4" result="soft" />
+      <feDisplacementMap in="SourceGraphic" in2="soft" scale="30" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
   <div class="page-shell">
     <header class="hero">
-      <div class="hero__glow hero__glow--one"></div>
-      <div class="hero__glow hero__glow--two"></div>
       <nav class="topbar" aria-label="主导航">
-        <a class="brand" href="./" aria-label="通琴号首页">
+        <a class="brand" href="./index.html" aria-label="通琴号首页">
           <span class="brand__mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" focusable="false">
               <path d="M4 6.5h16a2 2 0 0 1 2 2V17H2V8.5a2 2 0 0 1 2-2Z"></path>
@@ -44,19 +58,32 @@
       <div class="hero__content">
         <div class="hero__intro">
           <span class="section-kicker">COMMUTE ASSISTANT</span>
-          <h1>三地通勤班次查询<br/></h1>
+          <h1><em>三地</em>通勤班次查询</h1>
           <p>实时查询横琴、澳门、珠海双向班次</p>
+          <div class="region-legend" aria-label="三地配色">
+            <span class="region-legend__item region-legend__item--hengqin"><i></i>横琴</span>
+            <span class="region-legend__item region-legend__item--macau"><i></i>澳门</span>
+            <span class="region-legend__item region-legend__item--zhuhai"><i></i>珠海</span>
+          </div>
         </div>
         <div class="hero-actions">
           <button class="location-button" id="locateButton" type="button">
-            <span class="location-button__icon">⌖</span>
+            <span class="location-button__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="6.6"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><circle cx="12" cy="12" r="2.3" fill="currentColor" stroke="none"/></svg>
+            </span>
             <span><strong>刷新当前位置</strong><small>定位数据仅用于计算附近站点</small></span>
-            <span class="location-button__arrow">→</span>
+            <span class="location-button__arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+            </span>
           </button>
           <a class="routes-button" href="routes.html">
-            <span class="routes-button__icon">≡</span>
+            <span class="routes-button__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6.5h16M4 12h9.5M4 17.5h13"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="17.5" r="1.5" fill="currentColor" stroke="none"/></svg>
+            </span>
             <span><strong>全部线路</strong><small id="routesButtonHint">线路总览</small></span>
-            <span class="routes-button__arrow">→</span>
+            <span class="routes-button__arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+            </span>
           </a>
         </div>
         <div class="hero__hint" id="locationHint" data-config-text>开启定位后，为你推荐 {KM} 公里内最近的 {MAX} 个站点</div>
@@ -73,22 +100,22 @@
           <span class="ai-badge"><span>✦</span> 一键直达</span>
         </div>
         <div class="quick-actions">
-          <button type="button" class="quick-option quick-option--mint" data-quick="university-to-uma">
+          <button type="button" class="quick-option quick-option--macau" data-quick="university-to-uma">
             <span class="quick-option__flag">琴</span>
             <span><strong>琴澳大学城 → 澳大</strong><small>澳门新街坊 / 荔枝湾 → 澳大</small></span>
             <span class="quick-option__arrow">→</span>
           </button>
-          <button type="button" class="quick-option quick-option--lavender" data-quick="uma-to-university">
+          <button type="button" class="quick-option quick-option--hengqin" data-quick="uma-to-university">
             <span class="quick-option__flag">澳</span>
             <span><strong>澳大 → 琴澳大学城</strong><small>澳大 → 澳门新街坊 / 荔枝湾</small></span>
             <span class="quick-option__arrow">→</span>
           </button>
-          <button type="button" class="quick-option quick-option--sky" data-quick="nearby-to-uma">
+          <button type="button" class="quick-option quick-option--macau quick-option--nearby" data-quick="nearby-to-uma">
             <span class="quick-option__flag">琴</span>
             <span><strong>附近 → 澳大</strong><small data-config-text>附近 {MAX} 个站点 → 澳大</small></span>
             <span class="quick-option__arrow">→</span>
           </button>
-          <button type="button" class="quick-option quick-option--amber" data-quick="nearby-to-university">
+          <button type="button" class="quick-option quick-option--hengqin quick-option--nearby" data-quick="nearby-to-university">
             <span class="quick-option__flag">澳</span>
             <span><strong>附近 → 琴澳大学城</strong><small data-config-text>附近 {MAX} 个站点 → 澳门新街坊 / 荔枝湾</small></span>
             <span class="quick-option__arrow">→</span>
@@ -99,8 +126,8 @@
       <section class="section-block region-section" aria-labelledby="regionTitle">
         <div class="section-heading">
           <div>
-            <span class="section-kicker">01 / CURRENT AREA</span>
-            <h2 id="regionTitle">我当前在</h2>
+            <span class="section-kicker">01 / COMMUTE DIRECTION</span>
+            <h2 id="regionTitle">通勤方向</h2>
           </div>
           <span class="ai-badge"><span>✦</span> 定位判断</span>
         </div>
@@ -108,22 +135,22 @@
         <div class="direction-toggle" id="regionToggle" role="group" aria-label="出行方向">
           <button type="button" data-option="1-2" class="direction-option direction-option--hengqin">
             <span class="direction-option__flag">琴</span>
-            <span><strong>横琴</strong><small>前往澳门</small></span>
+            <span><strong>横琴 → 澳门</strong><small>跨境线 · 前往澳门</small></span>
             <span class="direction-option__check">✓</span>
           </button>
           <button type="button" data-option="2-1" class="direction-option direction-option--macau">
             <span class="direction-option__flag">澳</span>
-            <span><strong>澳门</strong><small>前往横琴</small></span>
+            <span><strong>澳门 → 横琴</strong><small>跨境线 · 前往横琴</small></span>
             <span class="direction-option__check">✓</span>
           </button>
           <button type="button" data-option="1-3" class="direction-option direction-option--hengqin">
             <span class="direction-option__flag">琴</span>
-            <span><strong>横琴</strong><small>前往珠海</small></span>
+            <span><strong>横琴 → 珠海</strong><small>境内线 · 前往珠海</small></span>
             <span class="direction-option__check">✓</span>
           </button>
           <button type="button" data-option="3-1" class="direction-option direction-option--zhuhai">
             <span class="direction-option__flag">珠</span>
-            <span><strong>珠海</strong><small>前往横琴</small></span>
+            <span><strong>珠海 → 横琴</strong><small>境内线 · 前往横琴</small></span>
             <span class="direction-option__check">✓</span>
           </button>
         </div>
@@ -156,11 +183,11 @@
           <div class="station-picker" id="stationPicker">
             <button class="station-picker__button" id="stationPickerButton" type="button" aria-expanded="false" aria-controls="stationPickerMenu">
               <span id="stationPickerValue">选择站点…</span>
-              <span class="station-picker__chevron">⌄</span>
+              <span class="station-picker__chevron"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m4 6.5 4 4 4-4"/></svg></span>
             </button>
             <div class="station-picker__menu" id="stationPickerMenu" hidden>
               <div class="station-picker__search">
-                <span>⌕</span>
+                <span class="picker-search__icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="5.2"/><path d="m13 13 3.4 3.4"/></svg></span>
                 <input id="stationPickerSearch" type="search" placeholder="搜索站点" autocomplete="off" />
               </div>
               <div class="station-picker__options" id="stationPickerOptions"></div>
@@ -176,11 +203,11 @@
           <div class="station-picker" id="dropOffPicker">
             <button class="station-picker__button" id="dropOffPickerButton" type="button" aria-expanded="false" aria-controls="dropOffPickerMenu">
               <span id="dropOffPickerValue">全部站点…</span>
-              <span class="station-picker__chevron">⌄</span>
+              <span class="station-picker__chevron"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m4 6.5 4 4 4-4"/></svg></span>
             </button>
             <div class="station-picker__menu" id="dropOffPickerMenu" hidden>
               <div class="station-picker__search">
-                <span>⌕</span>
+                <span class="picker-search__icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="5.2"/><path d="m13 13 3.4 3.4"/></svg></span>
                 <input id="dropOffPickerSearch" type="search" placeholder="搜索站点" autocomplete="off" />
               </div>
               <div class="station-picker__options" id="dropOffPickerOptions"></div>
@@ -215,7 +242,7 @@
     </footer>
   </div>
 
-  <script src="config.js?v=20260918-uncap1" defer></script>
-  <script src="app-v2.js?v=20261025-direction-options" defer></script>
+  <script src="config.js?v=20261026-palette-unify1" defer></script>
+  <script src="app-v2.js?v=20261026-palette-unify1" defer></script>
 </body>
 </html>
