@@ -1666,7 +1666,13 @@ h2 {
 
 .departure-card__time--multi strong { line-height: 1.32; }
 
-.departure-card__or,
+.departure-card__or {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
 .departure-card__day { font-size: .56em; }
 
 .boarding-stack {

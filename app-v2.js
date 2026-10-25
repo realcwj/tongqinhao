@@ -896,7 +896,7 @@ function departureHtml(item, index, expanded, now) {
 // 折叠的站点时刻先不生成，展开时才渲染，避免一次渲染大量隐藏 DOM
 function timelineHtml(item) {
   const dropOffKeys = new Set(state.selectedDropOffStops.map((stop) => stop.key));
-  return `<ol class="route-timeline">${routeTimelineHtml(item.route.stops, item.boardingIndexes, item.allowedStops, dropOffKeys, item.isEntry ? "口岸上车" : "上车")}</ol>`;
+  return `<ol class="route-timeline">${routeTimelineHtml(item.route.stops, item.boardingIndexes, item.allowedStops, dropOffKeys, item.isEntry ? "口岸可上车" : "可上车")}</ol>`;
 }
 
 function renderTimeline(details) {
@@ -909,7 +909,7 @@ function renderTimeline(details) {
   details.dataset.rendered = "1";
 }
 
-function routeTimelineHtml(stops, boardingIndexes, allowedStops, dropOffKeys, boardingLabel = "上车") {
+function routeTimelineHtml(stops, boardingIndexes, allowedStops, dropOffKeys, boardingLabel = "可上车") {
   const allowedIds = new Set(allowedStops.map((stop) => `${stop.stop_id}-${stop.time}`));
   const hasDropOffFilter = dropOffKeys.size > 0;
   return stops.map((stop, index) => {
