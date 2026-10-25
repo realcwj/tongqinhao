@@ -2598,7 +2598,8 @@ h2 {
   .departure-card .directory-card__main { grid-column: 2; grid-row: 1; }
 
   .departure-card__ride-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-column: 1 / -1;
     grid-row: 2;
     align-items: center;
@@ -2607,15 +2608,17 @@ h2 {
   }
 
   .departure-card .boarding-stack {
-    flex: 1 1 0;
+    grid-column: auto;
+    grid-row: auto;
     width: auto;
     max-width: none;
   }
 
   .departure-card .vehicle-chip {
-    flex: 0 1 auto;
+    grid-column: auto;
+    grid-row: auto;
     min-width: 0;
-    max-width: 48%;
+    max-width: none;
   }
 
   .departure-card .directory-card__meta { display: none; }

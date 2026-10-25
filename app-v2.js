@@ -139,7 +139,7 @@ function bindEvents() {
     toggle.setAttribute("aria-expanded", String(nextExpanded));
     const item = renderedDepartures[Number(card?.dataset.departureIndex)];
     if (item) {
-      const uid = routeKey(item.route);
+      const uid = departureUid(item);
       if (nextExpanded) state.expandedDepartureUids.add(uid);
       else state.expandedDepartureUids.delete(uid);
     }
@@ -641,7 +641,7 @@ function renderDepartures({ liveOnly = false } = {}) {
   els.selectedContext.innerHTML = contextText;
   els.departureEmpty.hidden = departures.length > 0;
 
-  const uids = departures.map((item) => routeKey(item.route));
+  const uids = departures.map((item) => departureUid(item));
   const sameList = uids.length === renderedDepartureUids.length && uids.every((uid, index) => uid === renderedDepartureUids[index]);
   const keptExpanded = new Set([...state.expandedDepartureUids].filter((uid) => uids.includes(uid)));
   if (!sameList && !liveOnly) {
@@ -657,7 +657,7 @@ function renderDepartures({ liveOnly = false } = {}) {
   renderedDepartureUids = uids;
   renderedStructureKey = structureKey;
   els.departureList.innerHTML = departures
-    .map((item, index) => departureHtml(item, index, state.expandedDepartureUids.has(routeKey(item.route)), now))
+    .map((item, index) => departureHtml(item, index, state.expandedDepartureUids.has(departureUid(item)), now))
     .join("");
 }
 
@@ -692,9 +692,13 @@ function buildDepartures(now) {
 }
 
 // 班次卡片的结构签名：签名不变时无需重建 DOM
+function departureUid(item) {
+  return `${routeKey(item.route)}@${item.dateText}`;
+}
+
 function departureStructureKey(item) {
   const legs = item.boardingStops.map((leg) => `${leg.stop.time}@${leg.dateText}`).join(",");
-  return `${routeKey(item.route)}|${legs}|${item.isEntry ? "entry" : "normal"}`;
+  return `${departureUid(item)}|${legs}|${item.isEntry ? "entry" : "normal"}`;
 }
 
 // 只更新随时间变化的文本，不触碰卡片结构
@@ -727,9 +731,10 @@ function departureStatusLabel(item, now) {
   return item.dayOffset === 0 ? vehicleStatus(item.route.stops, now) : "未发车";
 }
 
+// 倒计时统一显示分钟数；item.minutesUntil 已取同卡片多个上车站点中最近的时间
 function departureCountdownLabel(item) {
-  if (item.minutesUntil === 0) return "即将发车";
-  return item.dayOffset > 0 ? `${item.dayOffset} 天后` : `${item.minutesUntil} 分钟后`;
+  if (item.dayOffset > 0) return `${item.dayOffset} 天后`;
+  return `${item.minutesUntil} 分钟后`;
 }
 
 function scopeSummary(forwardCount, entryCount) {
@@ -821,10 +826,13 @@ function addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, all
     dayOffset: info.dayOffset,
     minutesUntil: info.minutesUntil,
   };
-  let item = routeDepartures.get(routeKey(route));
+  const cardKey = `${routeKey(route)}@${info.dateText}`;
+  // 同一线路可能同时出现今天/次日班次，按服务日期拆成独立卡片
+  let item = routeDepartures.get(cardKey);
   if (!item) {
     item = {
       route,
+      dateText: info.dateText,
       boardingStops: [],
       boardingIndexes: [],
       allowedStops: [],
@@ -832,7 +840,7 @@ function addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, all
       dayOffset: leg.dayOffset,
       isEntry,
     };
-    routeDepartures.set(routeKey(route), item);
+    routeDepartures.set(cardKey, item);
   }
   if (item.boardingStops.some((existing) => existing.stop.time === leg.stop.time)) return;
   item.boardingStops.push(leg);
@@ -928,12 +936,14 @@ function vehicleStatus(stops, now) {
   const timed = stops.map((stop) => ({ stop, minutes: parseTime(stop.time) })).filter((item) => item.minutes != null);
   if (!timed.length) return "时间待确认";
   if (nowValue < timed[0].minutes) return "未发车";
-  if (nowValue >= timed[timed.length - 1].minutes) return "已结束";
+  const last = timed[timed.length - 1];
+  if (nowValue === last.minutes) return `到站 ${last.stop.name}`;
+  if (nowValue > last.minutes) return "已结束";
   for (let index = 0; index < timed.length - 1; index += 1) {
     const current = timed[index];
     const next = timed[index + 1];
-    if (nowValue === current.minutes) return `在 ${current.stop.name} · 下一站 ${next.stop.name}`;
-    if (nowValue > current.minutes && nowValue < next.minutes) return `前往 ${next.stop.name}`;
+    if (nowValue === current.minutes) return `到站 ${current.stop.name}`;
+    if (nowValue > current.minutes && nowValue < next.minutes) return `离开 ${current.stop.name}`;
   }
   return "运行中";
 }
