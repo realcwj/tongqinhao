@@ -10,16 +10,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261026-motion8" />
+  <link rel="stylesheet" href="styles.css?v=20261026-audit5" />
 </head>
-<body class="routes-page">
+<body>
   <div class="ambient" aria-hidden="true">
-    <span class="ambient__orb ambient__orb--mint"></span>
-    <span class="ambient__orb ambient__orb--sky"></span>
-    <span class="ambient__orb ambient__orb--lavender"></span>
-    <span class="ambient__orb ambient__orb--peach"></span>
-    <span class="ambient__orb ambient__orb--aqua"></span>
-    <span class="ambient__orb ambient__orb--rose"></span>
+    <span class="ambient__orb ambient__orb--mist"></span>
+    <span class="ambient__orb ambient__orb--cream"></span>
+    <span class="ambient__orb ambient__orb--bluegray"></span>
   </div>
   <svg class="glass-defs" aria-hidden="true" focusable="false">
     <filter id="glass-distort" x="-15%" y="-15%" width="130%" height="130%">
@@ -65,7 +62,7 @@
             <span class="region-legend__item region-legend__item--zhuhai"><i></i>珠海</span>
           </div>
         </div>
-        <a class="routes-button routes-button--back" href="index.html" aria-label="返回主页查询后续班次">
+        <a class="routes-button" href="index.html" aria-label="返回主页查询后续班次">
           <span class="routes-button__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>
           </span>
@@ -86,11 +83,11 @@
           <input id="routeSearch" type="search" placeholder="搜索线路或站点" autocomplete="off" />
         </label>
         <div class="route-filters" id="routeFilters" role="group" aria-label="线路方向">
-          <button type="button" class="is-selected" data-filter="all">全部</button>
-          <button type="button" data-filter="1-2">横琴 → 澳门</button>
-          <button type="button" data-filter="2-1">澳门 → 横琴</button>
-          <button type="button" data-filter="1-3">横琴 → 珠海</button>
-          <button type="button" data-filter="3-1">珠海 → 横琴</button>
+          <button type="button" class="is-selected" data-filter="all" aria-pressed="true"><span class="route-filter__check" aria-hidden="true">✓</span>全部</button>
+          <button type="button" data-filter="1-2" aria-pressed="false"><span class="route-filter__check" aria-hidden="true">✓</span>横琴 → 澳门</button>
+          <button type="button" data-filter="2-1" aria-pressed="false"><span class="route-filter__check" aria-hidden="true">✓</span>澳门 → 横琴</button>
+          <button type="button" data-filter="1-3" aria-pressed="false"><span class="route-filter__check" aria-hidden="true">✓</span>横琴 → 珠海</button>
+          <button type="button" data-filter="3-1" aria-pressed="false"><span class="route-filter__check" aria-hidden="true">✓</span>珠海 → 横琴</button>
         </div>
       </section>
 
@@ -111,7 +108,7 @@
       <span><a href="index.html">返回通勤助手</a> · <a href="https://github.com/realcwj/tongqinhao" target="_blank" rel="noopener">GitHub 仓库</a> · 数据来源于公开接口</span>
     </footer>
   </div>
-  <script src="config.js?v=20261026-palette-unify1" defer></script>
-  <script src="routes.js?v=20261026-motion4" defer></script>
+  <script src="config.js?v=20261026-audit5" defer></script>
+  <script src="routes.js?v=20261026-audit5" defer></script>
 </body>
 </html>

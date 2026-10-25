@@ -108,6 +108,15 @@ function bindEvents() {
     if (!els.stationPicker.contains(event.target)) closeStationPicker();
     if (!els.dropOffPicker.contains(event.target)) closeDropOffPicker();
   });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const stationOpen = els.stationPickerButton.getAttribute("aria-expanded") === "true";
+    const dropOffOpen = els.dropOffPickerButton.getAttribute("aria-expanded") === "true";
+    if (stationOpen) els.stationPickerButton.focus({ preventScroll: true });
+    else if (dropOffOpen) els.dropOffPickerButton.focus({ preventScroll: true });
+    closeStationPicker();
+    closeDropOffPicker();
+  });
   els.dropOffPickerButton.addEventListener("click", toggleDropOffPicker);
   els.dropOffPickerSearch.addEventListener("input", () => renderDropOffPickerOptions(els.dropOffPickerSearch.value));
   els.dropOffPickerOptions.addEventListener("click", (event) => {
@@ -300,7 +309,11 @@ function setCurrentOption(option, automatic) {
   state.selectedOption = `${originRegion}-${destinationRegion}`;
   state.currentRegion = originRegion;
   state.destinationRegions = [destinationRegion];
-  els.regionButtons.forEach((button) => button.classList.toggle("is-selected", button.dataset.option === state.selectedOption));
+  els.regionButtons.forEach((button) => {
+    const active = button.dataset.option === state.selectedOption;
+    button.classList.toggle("is-selected", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
   els.regionReason.innerHTML = automatic
     ? `根据定位自动判断你当前在 <strong>${regionLabel(originRegion)}</strong>，已选择「${regionLabel(originRegion)} → ${regionLabel(destinationRegion)}」，也可以手动切换`
     : `已选择「${regionLabel(originRegion)} → ${regionLabel(destinationRegion)}」`;
@@ -346,8 +359,9 @@ function renderNearbyStations() {
 }
 
 function stationCardHtml(stop, closest) {
-  return `<button class="station-card${state.selectedStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-region="${stop.region}" data-nearby-stop="${stop.key}">
-    <div class="station-card__top"><span class="station-kind ${stop.region === "2" ? "station-kind--macau" : stop.region === "3" ? "station-kind--zhuhai" : ""}">${regionLabel(stop.region)}站点</span><span class="distance">${closest ? "最近 · " : ""}${formatDistance(stop.distanceKm)}</span></div>
+  const selected = state.selectedStops.some((item) => item.key === stop.key);
+  return `<button class="station-card${selected ? " is-selected" : ""}" type="button" aria-pressed="${selected}" data-region="${stop.region}" data-nearby-stop="${stop.key}">
+    <div class="station-card__top"><span class="station-kind">${regionLabel(stop.region)}站点</span><span class="distance">${closest ? "最近 · " : ""}${formatDistance(stop.distanceKm)}</span></div>
     <h3>${escapeHtml(stop.name)}</h3>
     <span class="station-card__check">✓</span>
   </button>`;
@@ -360,21 +374,12 @@ function selectStop(stop, scroll) {
   syncPickerSelection(els.stationPickerOptions, "data-picker-stop", state.selectedStops);
   computeAvailableDropOffStops();
   renderDepartures();
-  if (scroll) {
-    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-    document.querySelector(".departures-section")?.scrollIntoView({ behavior, block: "start" });
-  }
+  if (scroll) scrollToDepartures();
 }
 
-function clearSelectedStop() {
-  state.selectedStops = [];
-  state.selectedDropOffStops = [];
-  if (els.manualDropOffWrap) els.manualDropOffWrap.hidden = true;
-  updateStationPickerValue();
-  updateDropOffPickerValue();
-  els.selectedContext.textContent = "请选择上车站点";
-  els.departureList.innerHTML = "";
-  els.departureEmpty.hidden = false;
+function scrollToDepartures() {
+  const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+  document.querySelector(".departures-section")?.scrollIntoView({ behavior, block: "start" });
 }
 
 function toggleStationPicker() {
@@ -430,13 +435,17 @@ function toggleSelectedStop(stop) {
 
 function syncNearbySelection() {
   document.querySelectorAll(".station-card[data-nearby-stop]").forEach((card) => {
-    card.classList.toggle("is-selected", state.selectedStops.some((stop) => stop.key === card.dataset.nearbyStop));
+    const selected = state.selectedStops.some((stop) => stop.key === card.dataset.nearbyStop);
+    card.classList.toggle("is-selected", selected);
+    card.setAttribute("aria-pressed", String(selected));
   });
 }
 
 function syncPickerSelection(container, attribute, selectedStops) {
   container.querySelectorAll(`[${attribute}]`).forEach((option) => {
-    option.classList.toggle("is-selected", selectedStops.some((stop) => stop.key === option.getAttribute(attribute)));
+    const selected = selectedStops.some((stop) => stop.key === option.getAttribute(attribute));
+    option.classList.toggle("is-selected", selected);
+    option.setAttribute("aria-pressed", String(selected));
   });
 }
 
@@ -454,7 +463,7 @@ function renderStationPickerOptions(query = "") {
   const normalizedQuery = query.trim().toLocaleLowerCase("zh-CN");
   const options = state.availableStops.filter((stop) => !normalizedQuery || stop.name.toLocaleLowerCase("zh-CN").includes(normalizedQuery));
   els.stationPickerOptions.innerHTML = options.length
-    ? options.map((stop) => `<button class="station-picker__option${state.selectedStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-picker-stop="${escapeHtml(stop.key)}"><span class="station-picker__check">✓</span><span>${escapeHtml(stop.name)}</span></button>`).join("")
+    ? options.map((stop) => `<button class="station-picker__option${state.selectedStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" aria-pressed="${state.selectedStops.some((item) => item.key === stop.key)}" data-picker-stop="${escapeHtml(stop.key)}"><span class="station-picker__check">✓</span><span>${escapeHtml(stop.name)}</span></button>`).join("")
     : `<div class="station-picker__empty">没有匹配的站点</div>`;
 }
 
@@ -534,7 +543,7 @@ function renderDropOffPickerOptions(query = "") {
   const normalizedQuery = query.trim().toLocaleLowerCase("zh-CN");
   const options = state.availableDropOffStops.filter((stop) => !normalizedQuery || stop.name.toLocaleLowerCase("zh-CN").includes(normalizedQuery));
   els.dropOffPickerOptions.innerHTML = options.length
-    ? options.map((stop) => `<button class="station-picker__option${state.selectedDropOffStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-dropoff-stop="${escapeHtml(stop.key)}"><span class="station-picker__check">✓</span><span>${escapeHtml(stop.name)}</span>${dropOffRegionTag(stop)}</button>`).join("")
+    ? options.map((stop) => `<button class="station-picker__option${state.selectedDropOffStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" aria-pressed="${state.selectedDropOffStops.some((item) => item.key === stop.key)}" data-dropoff-stop="${escapeHtml(stop.key)}"><span class="station-picker__check">✓</span><span>${escapeHtml(stop.name)}</span>${dropOffRegionTag(stop)}</button>`).join("")
     : `<div class="station-picker__empty">没有匹配的站点</div>`;
 }
 
@@ -582,9 +591,10 @@ function quickSelect(mode) {
   );
   updateStationPickerValue();
   renderStationPickerOptions();
+  syncNearbySelection();
   computeAvailableDropOffStops();
   renderDepartures();
-  document.querySelector(".departures-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  scrollToDepartures();
 }
 
 function renderDepartures({ liveOnly = false } = {}) {

@@ -40,7 +40,7 @@
 ## 📦 项目结构
 
 ```
-├── .github/workflows/  # 定时任务：每天北京时间 02:00 自动更新线路数据
+├── .github/workflows/  # 定时任务：每天北京时间 05:00 自动更新线路数据
 ├── index.html          # 通勤助手主页
 ├── routes.html         # 全部线路页
 ├── config.js           # 全站配置：数据同步日期/链接、数据源、附近范围与条数等参数
@@ -54,7 +54,7 @@
 
 ## 🔄 数据自动更新
 
-`processed.json` 由 `get_all_route.py` 抓取通琴号接口生成，并由 `.github/workflows/update-routes.yml` 每天**北京时间 02:00**（UTC 18:00）自动执行一次，随后把变更提交回仓库；也可以在 GitHub 的 Actions 页面手动触发（`workflow_dispatch`）。
+`processed.json` 由 `get_all_route.py` 抓取通琴号接口生成，并由 `.github/workflows/update-routes.yml` 每天**北京时间 05:00**（UTC 21:00）自动执行一次，随后把变更提交回仓库；也可以在 GitHub 的 Actions 页面手动触发（`workflow_dispatch`）。
 
 每次运行会重新抓取全部线路，并按发车班次整理数据：
 

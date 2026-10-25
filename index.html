@@ -10,16 +10,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261026-motion8" />
+  <link rel="stylesheet" href="styles.css?v=20261026-audit5" />
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
-    <span class="ambient__orb ambient__orb--mint"></span>
-    <span class="ambient__orb ambient__orb--sky"></span>
-    <span class="ambient__orb ambient__orb--lavender"></span>
-    <span class="ambient__orb ambient__orb--peach"></span>
-    <span class="ambient__orb ambient__orb--aqua"></span>
-    <span class="ambient__orb ambient__orb--rose"></span>
+    <span class="ambient__orb ambient__orb--mist"></span>
+    <span class="ambient__orb ambient__orb--cream"></span>
+    <span class="ambient__orb ambient__orb--bluegray"></span>
   </div>
   <svg class="glass-defs" aria-hidden="true" focusable="false">
     <filter id="glass-distort" x="-15%" y="-15%" width="130%" height="130%">
@@ -91,7 +88,7 @@
     </header>
 
     <main class="main-content">
-      <section class="section-block quick-section" aria-labelledby="quickTitle">
+      <section class="section-block" aria-labelledby="quickTitle">
         <div class="section-heading">
           <div>
             <span class="section-kicker">00 / QUICK PICK</span>
@@ -110,12 +107,12 @@
             <span><strong>澳大 → 琴澳大学城</strong><small>澳大 → 澳门新街坊 / 荔枝湾</small></span>
             <span class="quick-option__arrow">→</span>
           </button>
-          <button type="button" class="quick-option quick-option--macau quick-option--nearby" data-quick="nearby-to-uma">
+          <button type="button" class="quick-option quick-option--macau" data-quick="nearby-to-uma">
             <span class="quick-option__flag">琴</span>
             <span><strong>附近 → 澳大</strong><small data-config-text>附近 {MAX} 个站点 → 澳大</small></span>
             <span class="quick-option__arrow">→</span>
           </button>
-          <button type="button" class="quick-option quick-option--hengqin quick-option--nearby" data-quick="nearby-to-university">
+          <button type="button" class="quick-option quick-option--hengqin" data-quick="nearby-to-university">
             <span class="quick-option__flag">澳</span>
             <span><strong>附近 → 琴澳大学城</strong><small data-config-text>附近 {MAX} 个站点 → 澳门新街坊 / 荔枝湾</small></span>
             <span class="quick-option__arrow">→</span>
@@ -123,7 +120,7 @@
         </div>
       </section>
 
-      <section class="section-block region-section" aria-labelledby="regionTitle">
+      <section class="section-block" aria-labelledby="regionTitle">
         <div class="section-heading">
           <div>
             <span class="section-kicker">01 / COMMUTE DIRECTION</span>
@@ -133,22 +130,22 @@
         </div>
         <p class="section-description" id="regionReason">获取定位后自动判断，也可以手动切换</p>
         <div class="direction-toggle" id="regionToggle" role="group" aria-label="出行方向">
-          <button type="button" data-option="1-2" class="direction-option direction-option--hengqin">
+          <button type="button" data-option="1-2" class="direction-option direction-option--hengqin" aria-pressed="false">
             <span class="direction-option__flag">琴</span>
             <span><strong>横琴 → 澳门</strong><small>跨境线 · 前往澳门</small></span>
             <span class="direction-option__check">✓</span>
           </button>
-          <button type="button" data-option="2-1" class="direction-option direction-option--macau">
+          <button type="button" data-option="2-1" class="direction-option direction-option--macau" aria-pressed="false">
             <span class="direction-option__flag">澳</span>
             <span><strong>澳门 → 横琴</strong><small>跨境线 · 前往横琴</small></span>
             <span class="direction-option__check">✓</span>
           </button>
-          <button type="button" data-option="1-3" class="direction-option direction-option--hengqin">
+          <button type="button" data-option="1-3" class="direction-option direction-option--hengqin" aria-pressed="false">
             <span class="direction-option__flag">琴</span>
             <span><strong>横琴 → 珠海</strong><small>境内线 · 前往珠海</small></span>
             <span class="direction-option__check">✓</span>
           </button>
-          <button type="button" data-option="3-1" class="direction-option direction-option--zhuhai">
+          <button type="button" data-option="3-1" class="direction-option direction-option--zhuhai" aria-pressed="false">
             <span class="direction-option__flag">珠</span>
             <span><strong>珠海 → 横琴</strong><small>境内线 · 前往横琴</small></span>
             <span class="direction-option__check">✓</span>
@@ -225,7 +222,7 @@
           <span class="clock-label" id="currentTime">--:--</span>
         </div>
 
-        <p class="section-description departure-direction-note" id="departureDirectionNote">选择当前所在区域后，自动显示可前往的后续班次；口岸站也可上车，限本区域内下车</p>
+        <p class="section-description" id="departureDirectionNote">选择当前所在区域后，自动显示可前往的后续班次；口岸站也可上车，限本区域内下车</p>
         <div class="selected-context" id="selectedContext"></div>
         <div class="departure-list" id="departureList"></div>
         <div class="empty-state empty-state--compact" id="departureEmpty" hidden>
@@ -242,7 +239,7 @@
     </footer>
   </div>
 
-  <script src="config.js?v=20261026-palette-unify1" defer></script>
-  <script src="app-v2.js?v=20261026-motion4" defer></script>
+  <script src="config.js?v=20261026-audit5" defer></script>
+  <script src="app-v2.js?v=20261026-audit5" defer></script>
 </body>
 </html>

@@ -10,20 +10,14 @@
 
   --font-sans: "Manrope", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-  --porcelain: #e7e9e8;
-  --mist: #c3d5d7;
   --cream: #efefd5;
-  --sage: #879f88;
   --jade: #40a382;
   --bluegray: #8b9ea3;
-  --olive: #9c9253;
   --terracotta: #b98861;
-  --gray: #888888;
 
   /* 深橄榄强调色阶：用于避免浅色文字看不清 */
   --olive-deep: #5b5945;
   --olive-mid: #978b6b;
-  --sand: #b6a97b;
   --paper-warm: #fdefcd;
 
   /* 文本：正文使用 #252621，辅助文字使用深橄榄 */
@@ -31,7 +25,6 @@
   --ink-soft: #252621;
   --muted: #5b5945;
   --faint: #978b6b;
-  --line: rgba(91, 89, 69, .16);
 
   /* 统一选中态：任何可选项选中后都是同一种实心玉绿 */
   --selected-fill: var(--jade);
@@ -39,24 +32,19 @@
   --selected-subtext: var(--cream);
   --selected-shadow: rgba(37, 38, 33, .24);
 
+  /* 兼容旧变量名：--macau 系列表示主强调玉绿，不代表澳门区域；澳门区域用 --region-macau */
   --macau: var(--jade);
   --macau-deep: var(--jade);
-  --macau-fill: var(--jade);
-  --macau-fill-deep: var(--sage);
   --macau-soft: rgba(64, 163, 130, .14);
   --macau-border: rgba(64, 163, 130, .34);
 
+  /* 横琴：苔绿 */
   --hengqin: #779c7b;
-  --hengqin-deep: #779c7b;
-  --hengqin-fill: #779c7b;
-  --hengqin-fill-deep: #879f88;
   --hengqin-soft: rgba(119, 156, 123, .16);
   --hengqin-border: rgba(119, 156, 123, .34);
 
+  /* 珠海：青灰 */
   --zhuhai: var(--bluegray);
-  --zhuhai-deep: var(--bluegray);
-  --zhuhai-fill: var(--bluegray);
-  --zhuhai-fill-deep: var(--bluegray);
   --zhuhai-soft: rgba(139, 158, 163, .18);
   --zhuhai-border: rgba(139, 158, 163, .34);
 
@@ -65,18 +53,15 @@
   --gold-soft: rgba(253, 239, 205, .72);
   --gold-border: rgba(182, 169, 123, .45);
 
+  /* 澳门：陶土 */
   --region-macau: var(--terracotta);
   --region-macau-deep: var(--terracotta);
-  --region-macau-fill: var(--terracotta);
-  --region-macau-fill-deep: var(--terracotta);
   --region-macau-soft: rgba(185, 136, 97, .18);
   --region-macau-border: rgba(185, 136, 97, .36);
 
-  --danger: var(--terracotta);
   --radius-xl: 28px;
   --radius-lg: 22px;
   --radius-md: 16px;
-  --radius-sm: 12px;
 
   --glass-blur: blur(14px) saturate(130%) brightness(1.02);
   --glass-shadow:
@@ -184,7 +169,7 @@ svg { display: block; }
   transform: translateZ(0);
 }
 
-.ambient__orb--mint {
+.ambient__orb--mist {
   top: -16vw;
   left: 1vw;
   width: min(38vw, 540px);
@@ -194,7 +179,7 @@ svg { display: block; }
   animation: orbDriftA 38s ease-in-out infinite alternate;
 }
 
-.ambient__orb--sky {
+.ambient__orb--cream {
   top: -12vh;
   right: 5vw;
   width: min(36vw, 520px);
@@ -204,7 +189,7 @@ svg { display: block; }
   animation: orbDriftB 44s ease-in-out infinite alternate;
 }
 
-.ambient__orb--lavender {
+.ambient__orb--bluegray {
   top: 25vh;
   right: -4vw;
   width: min(30vw, 430px);
@@ -212,36 +197,6 @@ svg { display: block; }
   opacity: .18;
   background: radial-gradient(circle at 50% 50%, rgba(139, 158, 163, .82), rgba(139, 158, 163, .2) 56%, transparent 74%);
   animation: orbDriftC 40s ease-in-out infinite alternate;
-}
-
-.ambient__orb--peach {
-  top: 35vh;
-  left: -2vw;
-  width: min(32vw, 460px);
-  aspect-ratio: 1;
-  opacity: .05;
-  background: radial-gradient(circle at 50% 50%, rgba(195, 213, 215, .72), rgba(195, 213, 215, .16) 56%, transparent 74%);
-  animation: orbDriftB 46s ease-in-out infinite alternate-reverse;
-}
-
-.ambient__orb--aqua {
-  top: 66vh;
-  right: 7vw;
-  width: min(30vw, 430px);
-  aspect-ratio: 1;
-  opacity: .05;
-  background: radial-gradient(circle at 50% 50%, rgba(139, 158, 163, .7), rgba(139, 158, 163, .16) 56%, transparent 74%);
-  animation: orbDriftC 42s ease-in-out infinite alternate;
-}
-
-.ambient__orb--rose {
-  top: 82vh;
-  left: 11vw;
-  width: min(24vw, 360px);
-  aspect-ratio: 1;
-  opacity: .04;
-  background: radial-gradient(circle at 50% 50%, rgba(139, 158, 163, .7), rgba(139, 158, 163, .16) 56%, transparent 74%);
-  animation: orbDriftA 48s ease-in-out infinite alternate-reverse;
 }
 
 @keyframes orbDriftA {
@@ -910,29 +865,9 @@ h2 {
   line-height: 1.7;
 }
 
-.region-section .section-kicker { color: var(--hengqin-deep); }
-
-.region-section .ai-badge {
-  color: var(--hengqin-deep);
-  border-color: var(--hengqin-border);
-  background: var(--hengqin-soft);
-}
-
-.departures-section .section-kicker { color: var(--zhuhai-deep); }
-
-.routes-main .route-results-heading .section-kicker { color: var(--zhuhai-deep); }
-
 /* ============================================================
    快速选择
    ============================================================ */
-
-.quick-section {
-  background:
-    radial-gradient(120% 90% at 8% -16%, rgba(255, 255, 255, .9), transparent 58%),
-    radial-gradient(85% 120% at 100% 0%, rgba(239, 239, 213, .5), transparent 56%),
-    radial-gradient(70% 110% at 0% 100%, rgba(195, 213, 215, .35), transparent 60%),
-    linear-gradient(152deg, rgba(239, 239, 213, .6), rgba(255, 255, 255, .55) 48%, rgba(231, 233, 232, .74));
-}
 
 .quick-actions {
   display: grid;
@@ -1084,8 +1019,6 @@ h2 {
   --accent: var(--hengqin);
   --accent-soft: var(--hengqin-soft);
   --accent-border: var(--hengqin-border);
-  --accent-fill: var(--hengqin-fill);
-  --accent-fill-deep: var(--hengqin-fill-deep);
   position: relative;
   display: flex;
   align-items: center;
@@ -1133,8 +1066,6 @@ h2 {
   --accent: var(--region-macau);
   --accent-soft: var(--region-macau-soft);
   --accent-border: var(--region-macau-border);
-  --accent-fill: var(--region-macau-fill);
-  --accent-fill-deep: var(--region-macau-fill-deep);
   background:
     radial-gradient(90% 140% at 100% 0%, rgba(239, 239, 213, .7), transparent 60%),
     radial-gradient(90% 140% at 0% 100%, var(--region-macau-soft), transparent 62%),
@@ -1145,16 +1076,12 @@ h2 {
   --accent: var(--hengqin);
   --accent-soft: var(--hengqin-soft);
   --accent-border: var(--hengqin-border);
-  --accent-fill: var(--hengqin-fill);
-  --accent-fill-deep: var(--hengqin-fill-deep);
 }
 
 .direction-option--zhuhai {
   --accent: var(--zhuhai);
   --accent-soft: var(--zhuhai-soft);
   --accent-border: var(--zhuhai-border);
-  --accent-fill: var(--zhuhai-fill);
-  --accent-fill-deep: var(--zhuhai-fill-deep);
 }
 
 .direction-option::before {
@@ -1384,6 +1311,7 @@ h2 {
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 8px var(--accent);
+  transition: background-color .24s var(--ease), box-shadow .24s;
 }
 
 .distance {
@@ -1667,10 +1595,10 @@ h2 {
 
 .station-picker__tag {
   margin-left: auto;
-  border: 1px solid transparent;
+  border: 1px solid var(--hengqin-border);
   border-radius: 999px;
   padding: 3px 8px;
-  color: var(--hengqin-deep);
+  color: var(--ink);
   background: var(--hengqin-soft);
   font-size: 9px;
   font-weight: 700;
@@ -1678,13 +1606,13 @@ h2 {
 }
 
 .station-picker__tag--2 {
-  color: var(--macau-deep);
-  border-color: var(--macau-border);
-  background: var(--macau-soft);
+  color: var(--ink);
+  border-color: var(--region-macau-border);
+  background: var(--region-macau-soft);
 }
 
 .station-picker__tag--3 {
-  color: var(--zhuhai-deep);
+  color: var(--ink);
   border-color: var(--zhuhai-border);
   background: var(--zhuhai-soft);
 }
@@ -1720,7 +1648,7 @@ h2 {
 
 .selected-context:empty { display: none; }
 
-.selected-context strong { color: var(--macau-deep); }
+.selected-context strong { color: var(--ink); }
 
 .departure-list {
   display: grid;
@@ -1822,7 +1750,7 @@ h2 {
 
 .departure-card__route .departure-card__boarding {
   margin-top: 3px;
-  color: var(--hengqin-deep);
+  color: var(--muted);
   font-weight: 600;
 }
 
@@ -1833,7 +1761,7 @@ h2 {
 
 .departure-card__countdown strong {
   display: block;
-  color: var(--macau-deep);
+  color: var(--ink);
   font-size: 13px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -1936,7 +1864,7 @@ h2 {
   grid-template-rows: 0fr;
   border-top: 1px solid transparent;
   background: transparent;
-  transition: grid-template-rows .46s var(--ease), border-color .25s;
+  transition: grid-template-rows .5s var(--ease), border-color .25s;
 }
 
 .route-details__inner {
@@ -1949,7 +1877,7 @@ h2 {
   background: rgba(255, 255, 255, .18);
   opacity: 0;
   transform: translateY(-6px);
-  transition: opacity .24s var(--ease), transform .34s var(--ease);
+  transition: opacity .26s var(--ease), transform .4s var(--ease);
 }
 
 .departure-card--expanded .route-details {
@@ -1960,7 +1888,7 @@ h2 {
 .departure-card--expanded .route-details__body {
   opacity: 1;
   transform: none;
-  transition-delay: .06s;
+  transition-delay: .07s;
 }
 
 .route-timeline {
@@ -2036,8 +1964,6 @@ h2 {
   box-shadow: 0 0 0 1px var(--macau), 0 0 10px rgba(64, 163, 130, .35);
 }
 
-.timeline-stop.is-allowed strong { color: var(--macau-deep); }
-
 /* ============================================================
    空状态 / 页脚
    ============================================================ */
@@ -2107,7 +2033,7 @@ h2 {
   transition: color .2s;
 }
 
-.footer a:hover { color: var(--macau-deep); }
+.footer a:hover { color: var(--gold); }
 
 /* ============================================================
    全部线路页
@@ -2224,6 +2150,9 @@ h2 {
 }
 
 .route-filters button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 34px;
   padding: 0 13px;
   border-radius: 10px;
@@ -2232,6 +2161,18 @@ h2 {
   font-weight: 700;
   white-space: nowrap;
   transition: color .2s, background-color .22s, box-shadow .24s, transform .16s var(--ease);
+}
+
+.route-filter__check {
+  display: inline-block;
+  width: 8px;
+  flex: none;
+  margin-right: 5px;
+  opacity: 0;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  transition: opacity .18s;
 }
 
 .route-filters button:hover {
@@ -2247,12 +2188,8 @@ h2 {
     0 10px 22px -12px rgba(64, 163, 130, .45);
 }
 
-.route-filters button.is-selected::before {
-  content: "\2713";
-  display: inline-block;
-  margin-right: 5px;
-  font-size: 9px;
-  font-weight: 800;
+.route-filters button.is-selected .route-filter__check {
+  opacity: 1;
   animation: checkPop .26s var(--ease) both;
 }
 
@@ -2400,7 +2337,7 @@ h2 {
   padding: 6px 9px;
   border: 1px solid var(--hengqin-border);
   border-radius: 8px;
-  color: var(--hengqin-deep);
+  color: var(--ink);
   background: var(--hengqin-soft);
   font-size: 9px;
   font-weight: 700;
@@ -2408,14 +2345,14 @@ h2 {
 }
 
 .direction-chip--2 {
-  border-color: var(--macau-border);
-  color: var(--macau-deep);
-  background: var(--macau-soft);
+  border-color: var(--region-macau-border);
+  color: var(--ink);
+  background: var(--region-macau-soft);
 }
 
 .direction-chip--3 {
   border-color: var(--zhuhai-border);
-  color: var(--zhuhai-deep);
+  color: var(--ink);
   background: var(--zhuhai-soft);
 }
 
@@ -2444,7 +2381,7 @@ h2 {
 }
 
 .vehicle-chip.is-running { border-color: var(--macau); }
-.vehicle-chip.is-running strong { color: var(--macau-deep); }
+.vehicle-chip.is-running strong { color: var(--ink-soft); }
 
 .vehicle-chip.is-waiting { border-color: var(--gold-bright); }
 .vehicle-chip.is-waiting strong { color: var(--gold); }
@@ -2452,7 +2389,7 @@ h2 {
 .vehicle-chip.is-finished { border-color: rgba(84, 104, 106, .22); }
 
 .vehicle-chip.is-idle { border-color: var(--zhuhai); }
-.vehicle-chip.is-idle strong { color: var(--zhuhai-deep); }
+.vehicle-chip.is-idle strong { color: var(--ink-soft); }
 
 .directory-card__meta { text-align: center; }
 
@@ -2589,8 +2526,8 @@ h2 {
 }
 
 .directory-stop--2 .directory-stop__line {
-  background: var(--macau);
-  box-shadow: 0 0 0 1px var(--macau);
+  background: var(--region-macau);
+  box-shadow: 0 0 0 1px var(--region-macau);
 }
 
 .directory-stop--3 .directory-stop__line {

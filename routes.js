@@ -22,7 +22,11 @@ async function init() {
   });
   els.filters.forEach((button) => button.addEventListener("click", () => {
     state.filter = button.dataset.filter;
-    els.filters.forEach((item) => item.classList.toggle("is-selected", item === button));
+    els.filters.forEach((item) => {
+      const active = item === button;
+      item.classList.toggle("is-selected", active);
+      item.setAttribute("aria-pressed", String(active));
+    });
     renderRoutes();
     animateDirectory();
   }));
@@ -190,7 +194,7 @@ function routeCardHtml(route, now) {
   const directionText = route.firstRegion === route.lastRegion
     ? `${regionLabel(route.firstRegion)}区域线路`
     : `${regionLabel(route.firstRegion)} → ${regionLabel(route.lastRegion)}`;
-  return `<article class="directory-card">
+  return `<article class="directory-card" data-region="${route.firstRegion}">
     <button type="button" class="directory-card__summary" data-route-id="${routeKey(route)}" aria-expanded="false" aria-controls="${detailsId}">
       <span class="directory-card__time"><strong>${escapeHtml(timeText)}</strong><small>${escapeHtml(startLabel)}</small></span>
       <span class="directory-card__main">${route.labelName ? `<small class="directory-card__label">${escapeHtml(route.labelName)}</small>` : ""}<strong>${escapeHtml(route.route_name)}</strong><small>${escapeHtml(first?.name || "未知站点")} → ${escapeHtml(last?.name || "未知站点")}</small></span>
