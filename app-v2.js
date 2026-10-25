@@ -1,11 +1,11 @@
 const state = {
   data: null,
-  crossBorderRoutes: [],
+  allRoutes: [],
   stops: [],
   userPosition: null,
   currentRegion: null,
   selectedStops: [],
-  destinationRegion: null,
+  destinationRegions: [],
   nearbyStops: [],
   availableStops: [],
   selectedDropOffStops: [],
@@ -38,9 +38,9 @@ async function init() {
     const response = await fetch(DATA_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`数据加载失败（HTTP ${response.status}）`);
     state.data = await response.json();
-    state.crossBorderRoutes = extractCrossBorderRoutes(state.data);
-    state.stops = buildStationCatalog(state.crossBorderRoutes);
-    if (els.routesButtonHint) els.routesButtonHint.textContent = `${state.crossBorderRoutes.length} 条线路总览`;
+    state.allRoutes = extractAllRoutes(state.data);
+    state.stops = buildStationCatalog(state.allRoutes);
+    if (els.routesButtonHint) els.routesButtonHint.textContent = `${state.allRoutes.length} 条线路总览`;
     els.locationHint.textContent = `共收录 ${state.stops.length} 个站点，定位后自动判断所在区域`;
     setLocationState("等待获取位置，也可以先手动选择所在区域", false);
     if (state.currentRegion) setCurrentRegion(state.currentRegion, false);
@@ -141,21 +141,48 @@ function bindEvents() {
   });
 }
 
-// processed.json 把跨境线与境内线分两个大类存储；页面只使用跨境线（兼容旧格式）
-function extractCrossBorderRoutes(data) {
-  const labels = data?.cross_border?.labels;
-  if (Array.isArray(labels)) return labels.flatMap((label) => label.routes || []);
-  return data?.routes || [];
+// processed.json 把跨境线与境内线分两个大类存储；两类线路都参与查询（兼容旧格式）
+function extractAllRoutes(data) {
+  const collect = (labels, lineType) => (Array.isArray(labels)
+    ? labels.flatMap((label) => (label.routes || []).map((route) => annotateRoute(route, lineType, label)))
+    : []);
+  const routes = [
+    ...collect(data?.cross_border?.labels, "cross_border"),
+    ...collect(data?.domestic?.labels, "domestic"),
+  ];
+  if (routes.length) return routes;
+  return (data?.routes || []).map((route) => annotateRoute(route, "cross_border"));
+}
+
+// kind 只区分上/下车，不表示区域：先按站点特征判断横琴，再按线路类型补齐（跨境→澳门，境内→珠海）
+function annotateRoute(route, lineType, label) {
+  const stops = (route.stops || []).map((stop) => ({ ...stop, region: inferStopRegion(stop, lineType) }));
+  const originRegion = stops[0]?.region || null;
+  const destinationRegion = stops[stops.length - 1]?.region || null;
+  const direction = originRegion && destinationRegion && originRegion !== destinationRegion
+    ? `${originRegion}-${destinationRegion}`
+    : null;
+  return {
+    ...route,
+    lineType,
+    labelId: label?.label_id ?? null,
+    labelName: label?.label_name || "",
+    stops,
+    originRegion,
+    destinationRegion,
+    direction,
+  };
 }
 
 function buildStationCatalog(routeEntries) {
   const map = new Map();
   routeEntries.forEach((route) => {
     // 暂无发车计划的线路不计入站点目录（否则会推荐没有班次可上的站点）
-    if (route.has_schedule === false) return;
-    const direction = getRouteDirection(route);
-    const originRegion = direction ? direction[0] : null;
-    const entry = direction ? findEntryPortStop(route, direction) : null;
+    if (route.has_schedule === false || !route.direction) return;
+    const direction = route.direction;
+    const originRegion = route.originRegion;
+    // 口岸站短途只适用于跨境线；境内线不设口岸站上车
+    const entry = route.lineType === "cross_border" ? findEntryPortStop(route, direction) : null;
     (route.stops || []).forEach((stop) => {
       const stopId = Number(stop.stop_id);
       const lat = Number(stop.y);
@@ -168,7 +195,7 @@ function buildStationCatalog(routeEntries) {
           stopIds: new Set([stopId]),
           lat,
           lng,
-          region: inferRegion(stop),
+          region: stop.region,
           boardingDirections: new Set(),
           entryBoardingDirections: new Set(),
         });
@@ -177,7 +204,7 @@ function buildStationCatalog(routeEntries) {
       station.stopIds.add(stopId);
       const cleanedName = cleanStopName(stop.name);
       if (cleanedName.length < station.name.length) station.name = cleanedName;
-      if (direction && String(stop.kind) === "1" && inferRegion(stop) === originRegion) {
+      if (String(stop.kind) === "1" && stop.region === originRegion) {
         station.boardingDirections.add(direction);
       }
       if (entry && stop === entry.stop) {
@@ -212,16 +239,6 @@ function cleanStopName(name) {
   return PORT_STOP_ALIASES.get(cleaned) || cleaned;
 }
 
-function getRouteDirection(route) {
-  const stops = route.stops || [];
-  if (stops.length < 2) return null;
-  const boardingStops = stops.filter((stop) => String(stop.kind) === "1");
-  const dropOffStops = stops.filter((stop) => String(stop.kind) === "2");
-  const origin = inferRegion(boardingStops[0] || stops[0]);
-  const destination = inferRegion(dropOffStops[dropOffStops.length - 1] || stops[stops.length - 1]);
-  return origin !== destination ? `${origin}-${destination}` : null;
-}
-
 function requestLocation(force = false) {
   if (force) state.locationRequested = false;
   if (state.locationRequested) return;
@@ -249,7 +266,7 @@ function onLocationSuccess(position) {
   const nearest = state.stops
     .map((stop) => ({ ...stop, distanceKm: haversineKm(state.userPosition.lat, state.userPosition.lng, stop.lat, stop.lng) }))
     .sort((a, b) => a.distanceKm - b.distanceKm)[0];
-  const inferredRegion = nearest?.region || inferRegionFromCoordinates(state.userPosition.lng);
+  const inferredRegion = nearest?.region || inferRegionFromCoordinates(state.userPosition.lat, state.userPosition.lng);
   setCurrentRegion(inferredRegion, true);
   els.locateButton.disabled = false;
   els.locateButton.querySelector("strong").textContent = "刷新当前位置";
@@ -281,14 +298,14 @@ function setCurrentRegion(region, automatic) {
   els.regionReason.innerHTML = automatic
     ? `根据定位自动判断你当前在 <strong>${regionLabel(state.currentRegion)}</strong>，也可以手动切换`
     : `已手动选择当前在 <strong>${regionLabel(state.currentRegion)}</strong>`;
-  state.destinationRegion = oppositeRegion(state.currentRegion);
+  state.destinationRegions = allowedDestinationRegions(state.currentRegion);
   refreshStationsForRegion();
 }
 
 function refreshStationsForRegion() {
   if (!state.currentRegion) return;
-  const direction = `${state.currentRegion}-${state.destinationRegion}`;
-  const available = state.stops.filter((stop) => stop.region === state.currentRegion && canBoardFrom(stop, direction));
+  const directions = allowedDirections();
+  const available = state.stops.filter((stop) => stop.region === state.currentRegion && canBoardToAny(stop, directions));
   state.availableStops = available;
   renderStationPickerOptions();
 
@@ -303,7 +320,7 @@ function refreshStationsForRegion() {
   }
   renderNearbyStations();
 
-  const selectedStillValid = state.selectedStops.filter((stop) => stop.region === state.currentRegion && canBoardFrom(stop, direction));
+  const selectedStillValid = state.selectedStops.filter((stop) => stop.region === state.currentRegion && canBoardToAny(stop, directions));
   state.selectedStops = selectedStillValid;
   if (!state.selectedStops.length && state.nearbyStops.length) selectStop(state.nearbyStops[0], false);
   else {
@@ -325,7 +342,7 @@ function renderNearbyStations() {
 
 function stationCardHtml(stop, closest) {
   return `<button class="station-card${state.selectedStops.some((item) => item.key === stop.key) ? " is-selected" : ""}" type="button" data-nearby-stop="${stop.key}">
-    <div class="station-card__top"><span class="station-kind ${stop.region === "2" ? "station-kind--macau" : ""}">${regionLabel(stop.region)}站点</span><span class="distance">${closest ? "最近 · " : ""}${formatDistance(stop.distanceKm)}</span></div>
+    <div class="station-card__top"><span class="station-kind ${stop.region === "2" ? "station-kind--macau" : stop.region === "3" ? "station-kind--zhuhai" : ""}">${regionLabel(stop.region)}站点</span><span class="distance">${closest ? "最近 · " : ""}${formatDistance(stop.distanceKm)}</span></div>
     <h3>${escapeHtml(stop.name)}</h3>
     <div class="station-card__bottom"><span>${stop.entryBoardingDirections?.size ? "口岸站可上车" : "可查询该站点班次"}</span><span class="station-card__check">✓</span></div>
   </button>`;
@@ -425,23 +442,25 @@ function computeAvailableDropOffStops() {
     return;
   }
   if (els.manualDropOffWrap) els.manualDropOffWrap.hidden = false;
-  const direction = `${state.currentRegion}-${state.destinationRegion}`;
   const reachableKeys = new Set();
-  state.crossBorderRoutes.forEach((route) => {
-    if (route.has_schedule === false) return;
-    const routeDirection = getRouteDirection(route);
-    if (routeDirection === direction) {
+  state.allRoutes.forEach((route) => {
+    if (route.has_schedule === false || !route.direction) return;
+    const [originRegion, destinationRegion] = route.direction.split("-");
+    // 正向：在本区域上车，前往允许的目的地
+    if (originRegion === state.currentRegion && state.destinationRegions.includes(destinationRegion)) {
       (route.stops || []).forEach((boardingStop, boardingIndex) => {
-        if (String(boardingStop.kind) !== "1") return;
+        if (String(boardingStop.kind) !== "1" || boardingStop.region !== state.currentRegion) return;
         if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(boardingStop.stop_id)))) return;
-        allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, state.destinationRegion).forEach((dropStop) => {
+        allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, destinationRegion).forEach((dropStop) => {
           reachableKeys.add(stopKeyFromRaw(dropStop));
         });
       });
       return;
     }
-    if (routeDirection !== reverseDirection(direction)) return;
-    const entry = findEntryPortStop(route, routeDirection);
+    // 反向：仅跨境线驶入本区域后的口岸站可上车，在本区域内短途下车
+    if (route.lineType !== "cross_border") return;
+    if (destinationRegion !== state.currentRegion || !state.destinationRegions.includes(originRegion)) return;
+    const entry = findEntryPortStop(route, route.direction);
     if (!entry) return;
     if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(entry.stop.stop_id)))) return;
     entryAllowedStops(route.stops, entry.index, state.currentRegion).forEach((dropStop) => {
@@ -485,13 +504,13 @@ function renderDropOffPickerOptions(query = "") {
 
 // 口岸站上车时，下车站与上车站同区域（境内短途），用标签区分
 function dropOffRegionTag(stop) {
-  return stop.region === state.destinationRegion
+  return state.destinationRegions.includes(stop.region)
     ? ""
     : `<span class="station-picker__tag station-picker__tag--${stop.region}">${regionLabel(stop.region)}境内</span>`;
 }
 
 function stopKeyFromRaw(stop) {
-  return `${inferRegion(stop)}|${cleanStopName(stop.name)}`;
+  return `${stop.region}|${cleanStopName(stop.name)}`;
 }
 
 // 快速选择预设：boardingPattern 为 null 时，上车点取当前区域内的附近站点（最多 MAX_NEARBY_STATIONS 个）
@@ -506,7 +525,6 @@ function quickSelect(mode) {
   const preset = QUICK_PRESETS[mode];
   if (!state.data || !preset) return;
   const boardingRegion = preset.boardingRegion;
-  const dropRegion = oppositeRegion(boardingRegion);
   const useNearbyStops = !preset.boardingPattern;
 
   if (useNearbyStops && !state.userPosition) {
@@ -524,7 +542,9 @@ function quickSelect(mode) {
   } else {
     state.selectedStops = state.availableStops.filter((stop) => preset.boardingPattern.test(stop.name));
   }
-  state.selectedDropOffStops = state.stops.filter((stop) => stop.region === dropRegion && preset.dropPattern.test(stop.name));
+  state.selectedDropOffStops = state.stops.filter((stop) =>
+    state.destinationRegions.includes(stop.region) && preset.dropPattern.test(stop.name)
+  );
   updateStationPickerValue();
   renderStationPickerOptions();
   computeAvailableDropOffStops();
@@ -533,16 +553,17 @@ function quickSelect(mode) {
 }
 
 function renderDepartures({ liveOnly = false } = {}) {
-  const direction = state.currentRegion && state.destinationRegion ? `${state.currentRegion}-${state.destinationRegion}` : null;
-  const hasNormalBoarding = Boolean(direction) && state.selectedStops.some((stop) => stop.boardingDirections.has(direction));
-  const hasEntryBoarding = Boolean(direction) && state.selectedStops.some((stop) => stop.entryBoardingDirections.has(direction));
-  if (direction && els.departureDirectionNote) {
-    const forwardNote = `${regionLabel(state.currentRegion)}上车 · 前往 <strong>${regionLabel(state.destinationRegion)}</strong>`;
+  const directions = state.currentRegion ? allowedDirections() : [];
+  const hasDirection = directions.length > 0;
+  const hasNormalBoarding = hasDirection && state.selectedStops.some((stop) => directions.some((direction) => stop.boardingDirections.has(direction)));
+  const hasEntryBoarding = hasDirection && state.selectedStops.some((stop) => directions.some((direction) => stop.entryBoardingDirections.has(direction)));
+  if (hasDirection && els.departureDirectionNote) {
+    const forwardNote = `${regionLabel(state.currentRegion)}上车 · 前往 <strong>${destinationLabel()}</strong>`;
     if (!hasEntryBoarding) els.departureDirectionNote.innerHTML = forwardNote;
     else if (hasNormalBoarding) els.departureDirectionNote.innerHTML = `${forwardNote} · 另含口岸站境内班次`;
     else els.departureDirectionNote.innerHTML = `${regionLabel(state.currentRegion)}上车 · 口岸站短途（限${regionLabel(state.currentRegion)}境内下车）`;
   }
-  if (!state.data || !state.selectedStops.length || !direction) {
+  if (!state.data || !state.selectedStops.length || !hasDirection) {
     els.selectedContext.textContent = state.currentRegion ? "请选择上车站点" : "请选择当前所在区域和上车站点";
     els.departureList.innerHTML = "";
     els.departureEmpty.hidden = false;
@@ -553,7 +574,7 @@ function renderDepartures({ liveOnly = false } = {}) {
   }
 
   const now = new Date();
-  const departures = buildDepartures(direction, now);
+  const departures = buildDepartures(now);
   const structureKey = departures.map(departureStructureKey).join("||");
 
   // 定时刷新：班次结构没变时只更新倒计时/车辆状态，保留展开状态、时间轴与滚动位置
@@ -594,25 +615,27 @@ function renderDepartures({ liveOnly = false } = {}) {
     .join("");
 }
 
-function buildDepartures(direction, now) {
+function buildDepartures(now) {
   const routeDepartures = new Map();
-  state.crossBorderRoutes.forEach((route) => {
+  state.allRoutes.forEach((route) => {
     // 未来几天没有发车计划的线路不参与班次查询
-    if (route.has_schedule === false) return;
-    const routeDirection = getRouteDirection(route);
-    if (routeDirection === direction) {
+    if (route.has_schedule === false || !route.direction) return;
+    const [originRegion, destinationRegion] = route.direction.split("-");
+    // 正向：在本区域上车，前往允许的目的地
+    if (originRegion === state.currentRegion && state.destinationRegions.includes(destinationRegion)) {
       (route.stops || []).forEach((boardingStop, boardingIndex) => {
-        if (String(boardingStop.kind) !== "1") return;
-        if (inferRegion(boardingStop) !== state.currentRegion) return;
+        if (String(boardingStop.kind) !== "1" || boardingStop.region !== state.currentRegion) return;
         if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(boardingStop.stop_id)))) return;
-        const allowedStops = allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, state.destinationRegion);
+        const allowedStops = allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, destinationRegion);
         if (!allowedStops.length || !matchesDropOffFilter(allowedStops)) return;
         addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, allowedStops, now, false);
       });
       return;
     }
-    if (routeDirection !== reverseDirection(direction)) return;
-    const entry = findEntryPortStop(route, routeDirection);
+    // 反向：仅跨境线的口岸站允许境内短途
+    if (route.lineType !== "cross_border") return;
+    if (destinationRegion !== state.currentRegion || !state.destinationRegions.includes(originRegion)) return;
+    const entry = findEntryPortStop(route, route.direction);
     if (!entry) return;
     if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(entry.stop.stop_id)))) return;
     const allowedStops = entryAllowedStops(route.stops, entry.index, state.currentRegion);
@@ -653,30 +676,28 @@ function departureCountdownLabel(item) {
 function scopeSummary(forwardCount, entryCount) {
   const current = regionLabel(state.currentRegion);
   if (entryCount && !forwardCount) return `口岸站上车 · ${current}境内`;
-  if (entryCount) return `${current} → ${regionLabel(state.destinationRegion)} · 含 ${entryCount} 个口岸站境内班次`;
-  return `${current} → ${regionLabel(state.destinationRegion)}`;
+  if (entryCount) return `${current} → ${destinationLabel()} · 含 ${entryCount} 个口岸站境内班次`;
+  return `${current} → ${destinationLabel()}`;
 }
 
 function allowedDropOffStops(stops, boardingIndex, currentRegion, destinationRegion) {
   let lastCurrentRegionIndex = boardingIndex;
   for (let index = boardingIndex; index < stops.length; index += 1) {
-    if (inferRegion(stops[index]) === currentRegion) lastCurrentRegionIndex = index;
+    if (stops[index].region === currentRegion) lastCurrentRegionIndex = index;
   }
-  const destinationStops = stops.slice(lastCurrentRegionIndex + 1).filter((stop) => inferRegion(stop) === destinationRegion);
-  return destinationStops;
+  return stops.slice(lastCurrentRegionIndex + 1).filter((stop) => stop.region === destinationRegion);
 }
 
 // 线路驶入对岸后停靠的首个口岸站：该站同样允许上车，乘客可在本区域后续站点下车
-
 function findEntryPortStop(route, direction) {
   const stops = route?.stops || [];
-  const destinationRegion = String(direction).split("-")[1];
-  const index = stops.findIndex((stop) => inferRegion(stop) === destinationRegion && isPortStopName(stop.name));
+  const destinationRegion = String(direction).split("-")[1] || route?.destinationRegion;
+  const index = stops.findIndex((stop) => stop.region === destinationRegion && isPortStopName(stop.name));
   return index >= 0 ? { stop: stops[index], index } : null;
 }
 
 function entryAllowedStops(stops, entryIndex, region) {
-  return stops.slice(entryIndex + 1).filter((stop) => inferRegion(stop) === region);
+  return stops.slice(entryIndex + 1).filter((stop) => stop.region === region);
 }
 
 function isPortStopName(name) {
@@ -792,7 +813,7 @@ function departureHtml(item, index, expanded, now) {
     .join("、");
   return `<article class="departure-card${expanded ? " departure-card--expanded" : ""}${index === 0 ? " is-next" : ""}${item.isEntry ? " departure-card--entry" : ""}" data-departure-index="${index}">
     <div class="departure-card__summary">
-      <div class="departure-card__time${item.boardingStops.length > 1 ? " departure-card__time--multi" : ""}"><strong>${timeLabel}</strong><small>${escapeHtml(item.route.route_name)}</small></div>
+      <div class="departure-card__time${item.boardingStops.length > 1 ? " departure-card__time--multi" : ""}">${item.route.labelName ? `<small class="departure-card__label">${escapeHtml(item.route.labelName)}</small>` : ""}<strong>${timeLabel}</strong><small>${escapeHtml(item.route.route_name)}</small></div>
       <div class="departure-card__route"><strong data-live="status">${escapeHtml(departureStatusLabel(item, now))}</strong><span>${routePath}</span><span class="departure-card__boarding">可上车站点：${boardingStops}</span></div>
       <div class="departure-card__countdown"><strong data-live="countdown">${escapeHtml(departureCountdownLabel(item))}</strong><small>${item.isEntry ? "口岸上车" : "本站发车"}</small></div>
       <button class="route-toggle" type="button" data-route-toggle aria-expanded="${expanded}" aria-controls="${detailsId}"><span>站点列表</span><span>${expanded ? "−" : "+"}</span></button>
@@ -825,7 +846,7 @@ function routeTimelineHtml(stops, boardingIndexes, allowedStops, dropOffKeys, bo
     const isBoarding = boardingIndexes.includes(index);
     const inAllowed = allowedIds.has(`${stop.stop_id}-${stop.time}`);
     const canDropOff = inAllowed && (!hasDropOffFilter || dropOffKeys.has(stopKeyFromRaw(stop)));
-    const region = inferRegion(stop);
+    const region = stop.region;
     return `<li class="timeline-stop${isBoarding ? " is-boarding" : ""}${canDropOff ? " is-allowed" : ""}">
       <time>${escapeHtml(stop.time || "--:--")}</time><span class="timeline-dot"></span><div><strong>${escapeHtml(stop.name)}</strong><small>${regionLabel(region)}${isBoarding ? ` · ${boardingLabel}` : canDropOff ? " · 可下车" : ""}</small></div>
     </li>`;
@@ -847,25 +868,72 @@ function vehicleStatus(stops, now) {
   return "运行中";
 }
 
-function inferRegion(stop) {
+// 横琴岛大致范围：南端长隆、北端十字门、西端中医药产业园、东端横琴口岸
+const HENGQIN_BBOX = { minLng: 113.43, maxLng: 113.562, minLat: 22.08, maxLat: 22.168 };
+// 横琴特征名（只放明确属于横琴、且不会在珠海/澳门重名的地点）
+const HENGQIN_NAME = /横琴|中医药产业园|琴海|金融岛|汇通|IFC|HFC|澳门新街坊|创新方|濠江路口|桂风道路口|开新三道|颂琴|富城道|海鸣桥|长隆|石山村|国际网球中心|粗沙环|中葡经贸|金汇国际|厚朴道|环岛|洋环|荔枝湾|华发首府|保利国际|中海名钻|琴朗|琴政/;
+// 澳门特征名：跨境线中不属于横琴的站点都归入澳门
+const MACAU_NAME = /澳门|澳大|澳旅|澳理|新濠|银河|威尼斯人|葡京|氹仔|关闸|亚马喇|筷子基|望德|林茂|赛马会|友谊马路|海上居|东北大马路|二龙喉|观音|鮑思高|巴波沙|沙梨头|海擎天|泉悦花园|连贯公路|机场大马路|排角|莲花|霍英东/;
+
+function isWithinHengqin(lat, lng) {
+  return Number.isFinite(lat) && Number.isFinite(lng)
+    && lng >= HENGQIN_BBOX.minLng && lng <= HENGQIN_BBOX.maxLng
+    && lat >= HENGQIN_BBOX.minLat && lat <= HENGQIN_BBOX.maxLat;
+}
+
+// 判断站点是否位于横琴：特征名优先，其次用经纬度范围兜底
+function isHengqinStop(stop) {
   const name = String(stop?.name || "");
-  const lng = Number(stop?.x);
-  const hengqin = /横琴|中医药产业园|琴海|金融岛|汇通|市民中心|人才公寓|华发首府|保利国际|中海名钻|K2荔枝湾|上村|下村|琴政|琴朗|十字门|环岛北路|科创中心|洋环路|中葡经贸|中央汇|横琴医院|伯牙|金汇国际|迎客平台|南二门|澳门新街坊/;
-  const macau = /澳门|澳大|澳旅|澳理|新濠|银河|威尼斯人|葡京|氹仔|关闸|亚马喇|筷子基|望德|林茂|赛马会|友谊马路|海上居|东北大马路|二龙喉|观音|鮑思高|巴波沙|沙梨头|海擎天|泉悦花园|连贯公路|机场大马路|排角/;
-  if (hengqin.test(name)) return "1";
-  if (macau.test(name)) return "2";
-  return inferRegionFromCoordinates(lng);
+  if (name.includes("澳门新街坊")) return true;
+  // “往横琴…”是行车方向描述（如珠海连屏），不代表站点在横琴境内
+  if (name.includes("往横琴")) return false;
+  if (HENGQIN_NAME.test(name)) return true;
+  if (MACAU_NAME.test(name)) return false;
+  return isWithinHengqin(Number(stop?.y), Number(stop?.x));
 }
 
-function inferRegionFromCoordinates(lng) {
-  return Number.isFinite(lng) && lng >= 113.55 ? "2" : "1";
+// 跨境线只往返横琴与澳门，境内线只往返横琴与珠海
+function inferStopRegion(stop, lineType) {
+  if (isHengqinStop(stop)) return "1";
+  return lineType === "domestic" ? "3" : "2";
 }
 
-function regionLabel(region) { return String(region) === "2" ? "澳门" : "横琴"; }
-function oppositeRegion(region) { return String(region) === "1" ? "2" : "1"; }
-function reverseDirection(direction) { return String(direction) === "1-2" ? "2-1" : "1-2"; }
+// 定位失败时的兜底判断；正常情况下以最近站点的区域为准
+function inferRegionFromCoordinates(lat, lng) {
+  if (Number.isFinite(lat) && Number.isFinite(lng) && isWithinHengqin(lat, lng) && lng <= 113.55) return "1";
+  if (Number.isFinite(lng) && lng >= 113.54 && lat <= 22.22) return "2";
+  if (isWithinHengqin(lat, lng)) return "1";
+  return "3";
+}
+
+function regionLabel(region) {
+  return { 1: "横琴", 2: "澳门", 3: "珠海" }[String(region)] || "未知";
+}
+
+// 上下车规则：在澳门/珠海上车只能去横琴；在横琴上车可以去澳门或珠海
+function allowedDestinationRegions(region) {
+  return String(region) === "1" ? ["2", "3"] : ["1"];
+}
+
+function destinationLabel(regions = state.destinationRegions) {
+  return regions.map(regionLabel).join(" / ");
+}
+
+function allowedDirections() {
+  return state.destinationRegions.map((region) => `${state.currentRegion}-${region}`);
+}
+
+function reverseDirection(direction) {
+  const [origin, destination] = String(direction).split("-");
+  return `${destination}-${origin}`;
+}
+
 function canBoardFrom(stop, direction) {
   return stop.boardingDirections.has(direction) || stop.entryBoardingDirections.has(direction);
+}
+
+function canBoardToAny(stop, directions) {
+  return directions.some((direction) => canBoardFrom(stop, direction));
 }
 function parseTime(value) {
   const match = typeof value === "string" ? value.match(/^(\d{1,2}):(\d{2})$/) : null;

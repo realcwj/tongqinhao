@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260918-time-size" />
+  <link rel="stylesheet" href="styles.css?v=20261025-label-name" />
 </head>
 <body>
   <div class="page-shell">
@@ -42,7 +42,7 @@
           </button>
           <a class="routes-button" href="routes.html">
             <span class="routes-button__icon">≡</span>
-            <span><strong>全部跨境线路</strong><small id="routesButtonHint">线路总览</small></span>
+            <span><strong>全部线路</strong><small id="routesButtonHint">线路总览</small></span>
             <span class="routes-button__arrow">→</span>
           </a>
         </div>
@@ -101,6 +101,11 @@
           <button type="button" data-region="2" class="direction-option direction-option--macau">
             <span class="direction-option__flag">澳</span>
             <span><strong>澳门</strong><small>澳门上车</small></span>
+            <span class="direction-option__check">✓</span>
+          </button>
+          <button type="button" data-region="3" class="direction-option direction-option--zhuhai">
+            <span class="direction-option__flag">珠</span>
+            <span><strong>珠海</strong><small>珠海上车</small></span>
             <span class="direction-option__check">✓</span>
           </button>
         </div>
@@ -175,7 +180,7 @@
           <span class="clock-label" id="currentTime">--:--</span>
         </div>
 
-        <p class="section-description departure-direction-note" id="departureDirectionNote">选择当前所在区域后，自动显示前往对岸的后续班次；口岸站也可上车，限本区域内下车</p>
+        <p class="section-description departure-direction-note" id="departureDirectionNote">选择当前所在区域后，自动显示可前往的后续班次；口岸站也可上车，限本区域内下车</p>
         <div class="selected-context" id="selectedContext"></div>
         <div class="departure-list" id="departureList"></div>
         <div class="empty-state empty-state--compact" id="departureEmpty" hidden>
@@ -188,11 +193,11 @@
 
     <footer class="footer">
       <span>通琴号跨境通勤助手</span>
-      <span><a href="routes.html">全部跨境线路</a> · <a href="https://github.com/realcwj/tongqinhao" target="_blank" rel="noopener">GitHub 仓库</a> · 数据来源于公开接口 · 定位信息仅在本地使用</span>
+      <span><a href="routes.html">全部线路</a> · <a href="https://github.com/realcwj/tongqinhao" target="_blank" rel="noopener">GitHub 仓库</a> · 数据来源于公开接口 · 定位信息仅在本地使用</span>
     </footer>
   </div>
 
   <script src="config.js?v=20260918-uncap1" defer></script>
-  <script src="app-v2.js?v=20260918-uncap1" defer></script>
+  <script src="app-v2.js?v=20261025-label-name" defer></script>
 </body>
 </html>

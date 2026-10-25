@@ -31,7 +31,7 @@ async function init() {
     const response = await fetch(DATA_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    state.crossBorderRoutes = extractCrossBorderRoutes(data).map(normalizeRoute);
+    state.routes = extractAllRoutes(data).map(normalizeRoute);
     renderRoutes();
   } catch (error) {
     els.count.textContent = "加载失败";
@@ -39,24 +39,42 @@ async function init() {
   }
 }
 
-// processed.json 把跨境线与境内线分两个大类存储；页面只使用跨境线（兼容旧格式）
-function extractCrossBorderRoutes(data) {
-  const labels = data?.cross_border?.labels;
-  if (Array.isArray(labels)) return labels.flatMap((label) => label.routes || []);
-  return data?.routes || [];
+// processed.json 把跨境线与境内线分两个大类存储；两类线路都要展示（兼容旧格式）
+function extractAllRoutes(data) {
+  const collect = (labels, lineType) => (Array.isArray(labels)
+    ? labels.flatMap((label) => (label.routes || []).map((route) => annotateRoute(route, lineType, label)))
+    : []);
+  const routes = [
+    ...collect(data?.cross_border?.labels, "cross_border"),
+    ...collect(data?.domestic?.labels, "domestic"),
+  ];
+  if (routes.length) return routes;
+  return (data?.routes || []).map((route) => annotateRoute(route, "cross_border"));
+}
+
+// kind 只区分上/下车，不表示区域：先按站点特征判断横琴，再按线路类型补齐（跨境→澳门，境内→珠海）
+function annotateRoute(route, lineType, label) {
+  const stops = (route.stops || []).map((stop) => ({ ...stop, region: inferStopRegion(stop, lineType) }));
+  return {
+    ...route,
+    lineType,
+    labelId: label?.label_id ?? null,
+    labelName: label?.label_name || "",
+    stops,
+  };
 }
 
 function normalizeRoute(route) {
   const stops = route.stops || [];
-  const firstRegion = stops.length ? inferRegion(stops[0]) : "1";
-  const lastRegion = stops.length ? inferRegion(stops[stops.length - 1]) : firstRegion;
+  const firstRegion = stops[0]?.region || "1";
+  const lastRegion = stops[stops.length - 1]?.region || firstRegion;
   return {
     ...route,
     stops,
     direction: `${firstRegion}-${lastRegion}`,
     firstRegion,
     lastRegion,
-    searchText: `${route.route_name || ""} ${stops.map((stop) => stop.name).join(" ")}`.toLocaleLowerCase("zh-CN"),
+    searchText: `${route.route_name || ""} ${route.labelName || ""} ${stops.map((stop) => stop.name).join(" ")}`.toLocaleLowerCase("zh-CN"),
   };
 }
 
@@ -67,14 +85,14 @@ function routeKey(route) {
 
 function renderRoutes() {
   const now = new Date();
-  const routes = state.crossBorderRoutes
+  const routes = state.routes
     .filter((route) => {
       const matchesFilter = state.filter === "all" || route.direction === state.filter;
       const matchesSearch = !state.query || route.searchText.includes(state.query);
       return matchesFilter && matchesSearch;
     })
     .sort((a, b) => minutesUntilDeparture(a, now) - minutesUntilDeparture(b, now));
-  els.count.textContent = `${routes.length} / ${state.crossBorderRoutes.length} 条`;
+  els.count.textContent = `${routes.length} / ${state.routes.length} 条`;
   els.empty.hidden = routes.length > 0;
   els.directory.innerHTML = routes.map((route) => routeCardHtml(route, now)).join("");
 }
@@ -168,7 +186,7 @@ function routeCardHtml(route, now) {
   return `<article class="directory-card">
     <button type="button" class="directory-card__summary" data-route-id="${routeKey(route)}" aria-expanded="false" aria-controls="${detailsId}">
       <span class="directory-card__time"><strong>${escapeHtml(timeText)}</strong><small>${escapeHtml(startLabel)}</small></span>
-      <span class="directory-card__main"><strong>${escapeHtml(route.route_name)}</strong><small>${escapeHtml(first?.name || "未知站点")} → ${escapeHtml(last?.name || "未知站点")}</small></span>
+      <span class="directory-card__main">${route.labelName ? `<small class="directory-card__label">${escapeHtml(route.labelName)}</small>` : ""}<strong>${escapeHtml(route.route_name)}</strong><small>${escapeHtml(first?.name || "未知站点")} → ${escapeHtml(last?.name || "未知站点")}</small></span>
       <span class="direction-chip direction-chip--${route.firstRegion}">${directionText}</span>
       <span class="vehicle-chip ${chip.tone}"><strong>${escapeHtml(chip.label)}</strong><small>${escapeHtml(chip.detail)}</small></span>
       <span class="directory-card__meta"><strong>${route.stops.length}</strong><small>站</small></span>
@@ -182,7 +200,7 @@ function routeCardHtml(route, now) {
 }
 
 function stopHtml(stop, index, total) {
-  const region = inferRegion(stop);
+  const region = stop.region;
   const edgeLabel = index === 0 ? "始发" : index === total - 1 ? "终点" : "";
   return `<li class="directory-stop directory-stop--${region}">
     <time>${escapeHtml(stop.time || "--:--")}</time>
@@ -216,21 +234,43 @@ function vehicleStatus(stops, now) {
   return { label: "运行中", detail: "车辆行驶中", tone: "is-running" };
 }
 
-function inferRegion(stop) {
+// 横琴岛大致范围：南端长隆、北端十字门、西端中医药产业园、东端横琴口岸
+const HENGQIN_BBOX = { minLng: 113.43, maxLng: 113.562, minLat: 22.08, maxLat: 22.168 };
+// 横琴特征名（只放明确属于横琴、且不会在珠海/澳门重名的地点）
+const HENGQIN_NAME = /横琴|中医药产业园|琴海|金融岛|汇通|IFC|HFC|澳门新街坊|创新方|濠江路口|桂风道路口|开新三道|颂琴|富城道|海鸣桥|长隆|石山村|国际网球中心|粗沙环|中葡经贸|金汇国际|厚朴道|环岛|洋环|荔枝湾|华发首府|保利国际|中海名钻|琴朗|琴政/;
+// 澳门特征名：跨境线中不属于横琴的站点都归入澳门
+const MACAU_NAME = /澳门|澳大|澳旅|澳理|新濠|银河|威尼斯人|葡京|氹仔|关闸|亚马喇|筷子基|望德|林茂|赛马会|友谊马路|海上居|东北大马路|二龙喉|观音|鮑思高|巴波沙|沙梨头|海擎天|泉悦花园|连贯公路|机场大马路|排角|莲花|霍英东/;
+
+function isWithinHengqin(lat, lng) {
+  return Number.isFinite(lat) && Number.isFinite(lng)
+    && lng >= HENGQIN_BBOX.minLng && lng <= HENGQIN_BBOX.maxLng
+    && lat >= HENGQIN_BBOX.minLat && lat <= HENGQIN_BBOX.maxLat;
+}
+
+function isHengqinStop(stop) {
   const name = String(stop?.name || "");
-  const lng = Number(stop?.x);
-  const hengqin = /横琴|中医药产业园|琴海|金融岛|汇通|市民中心|人才公寓|华发首府|保利国际|中海名钻|K2荔枝湾|上村|下村|琴政|琴朗|十字门|环岛北路|科创中心|洋环路|中葡经贸|中央汇|横琴医院|伯牙|金汇国际|迎客平台|南二门|澳门新街坊/;
-  const macau = /澳门|澳大|澳旅|澳理|新濠|银河|威尼斯人|葡京|氹仔|关闸|亚马喇|筷子基|望德|林茂|赛马会|友谊马路|海上居|东北大马路|二龙喉|观音|鮑思高|巴波沙|沙梨头|海擎天|泉悦花园|连贯公路|机场大马路|排角/;
-  if (hengqin.test(name)) return "1";
-  if (macau.test(name)) return "2";
-  return Number.isFinite(lng) && lng >= 113.55 ? "2" : "1";
+  if (name.includes("澳门新街坊")) return true;
+  // “往横琴…”是行车方向描述（如珠海连屏），不代表站点在横琴境内
+  if (name.includes("往横琴")) return false;
+  if (HENGQIN_NAME.test(name)) return true;
+  if (MACAU_NAME.test(name)) return false;
+  return isWithinHengqin(Number(stop?.y), Number(stop?.x));
+}
+
+// 跨境线只往返横琴与澳门，境内线只往返横琴与珠海
+function inferStopRegion(stop, lineType) {
+  if (isHengqinStop(stop)) return "1";
+  return lineType === "domestic" ? "3" : "2";
+}
+
+function regionLabel(region) {
+  return { 1: "横琴", 2: "澳门", 3: "珠海" }[String(region)] || "未知";
 }
 
 function parseTime(value) {
   const match = typeof value === "string" ? value.match(/^(\d{1,2}):(\d{2})$/) : null;
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
-function regionLabel(region) { return String(region) === "2" ? "澳门" : "横琴"; }
 function minutesText(minutes) { return minutes >= 60 ? `${Math.floor(minutes / 60)}小时${minutes % 60 ? `${minutes % 60}分钟` : ""}` : `${minutes}分钟`; }
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>'\"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
