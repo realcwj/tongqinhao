@@ -130,7 +130,7 @@ function bindEvents() {
     if (!clickedCheck) closeDropOffPicker();
   });
   els.departureList.addEventListener("click", (event) => {
-    const toggle = event.target.closest("[data-route-toggle]");
+    const toggle = event.target.closest("[data-departure-toggle]");
     if (!toggle) return;
     const card = toggle.closest(".departure-card");
     const details = document.querySelector(`#${CSS.escape(toggle.getAttribute("aria-controls"))}`);
@@ -149,6 +149,7 @@ function bindEvents() {
     details.setAttribute("aria-hidden", String(!nextExpanded));
     if (nextExpanded) void details.offsetHeight;
     card?.classList.toggle("departure-card--expanded", nextExpanded);
+    card?.classList.toggle("is-open", nextExpanded);
   });
 }
 
@@ -705,8 +706,21 @@ function updateDepartureLiveFields(departures, now) {
     if (statusEl) statusEl.textContent = departureStatusLabel(item, now);
     const countdownEl = card.querySelector('[data-live="countdown"]');
     if (countdownEl) countdownEl.textContent = departureCountdownLabel(item);
+    const vehicleEl = card.querySelector(".vehicle-chip");
+    if (vehicleEl) {
+      vehicleEl.classList.remove("is-running", "is-waiting", "is-finished", "is-idle");
+      vehicleEl.classList.add(departureVehicleTone(item, now));
+    }
     card.classList.toggle("is-next", index === 0);
   });
+}
+
+function departureVehicleTone(item, now) {
+  const status = departureStatusLabel(item, now);
+  if (status === "时间待确认") return "is-idle";
+  if (status === "已结束") return "is-finished";
+  if (status === "未发车") return "is-waiting";
+  return "is-running";
 }
 
 function departureStatusLabel(item, now) {
@@ -853,16 +867,24 @@ function departureHtml(item, index, expanded, now) {
     .join(' <span class="departure-card__or">或</span><br>');
   const routeStops = item.route.stops || [];
   const routePath = `${escapeHtml(routeStops[0]?.name || "未知站点")} → ${escapeHtml(routeStops[routeStops.length - 1]?.name || "未知站点")}`;
-  const boardingStops = item.boardingStops
-    .map((leg) => `${boardingDayPrefix(leg)}${escapeHtml(leg.stop.time || "--:--")} ${escapeHtml(leg.stop.name)}`)
-    .join("、");
-  return `<article class="departure-card${expanded ? " departure-card--expanded" : ""}${index === 0 ? " is-next" : ""}${item.isEntry ? " departure-card--entry" : ""}" data-departure-index="${index}">
-    <div class="departure-card__summary">
-      <div class="departure-card__time${item.boardingStops.length > 1 ? " departure-card__time--multi" : ""}">${item.route.labelName ? `<small class="departure-card__label">${escapeHtml(item.route.labelName)}</small>` : ""}<strong>${timeLabel}</strong><small>${escapeHtml(item.route.route_name)}</small></div>
-      <div class="departure-card__route"><strong data-live="status">${escapeHtml(departureStatusLabel(item, now))}</strong><span>${routePath}</span><span class="departure-card__boarding">可上车站点：${boardingStops}</span></div>
-      <div class="departure-card__countdown"><strong data-live="countdown">${escapeHtml(departureCountdownLabel(item))}</strong><small>${item.isEntry ? "口岸上车" : "本站发车"}</small></div>
-      <button class="route-toggle" type="button" data-route-toggle aria-expanded="${expanded}" aria-controls="${detailsId}"><span>站点列表</span><span class="route-toggle__icon" aria-hidden="true"></span></button>
-    </div>
+  const boardingMarkup = item.boardingStops
+    .map((leg) => `<span class="boarding-stop"><time>${boardingDayPrefix(leg)}${escapeHtml(leg.stop.time || "--:--")}</time><span class="boarding-stop__name">${escapeHtml(leg.stop.name)}</span></span>`)
+    .join("");
+  const statusLabel = departureStatusLabel(item, now);
+  const countdownLabel = departureCountdownLabel(item);
+  const vehicleTone = departureVehicleTone(item, now);
+  const region = item.route.originRegion || routeStops[0]?.region || "1";
+  return `<article class="directory-card departure-card${expanded ? " departure-card--expanded is-open" : ""}${index === 0 ? " is-next" : ""}${item.isEntry ? " departure-card--entry" : ""}" data-region="${region}" data-departure-index="${index}">
+    <button class="directory-card__summary" type="button" data-departure-toggle aria-expanded="${expanded}" aria-controls="${detailsId}">
+      <span class="directory-card__time departure-card__time${item.boardingStops.length > 1 ? " departure-card__time--multi" : ""}"><strong>${timeLabel}</strong><small>${item.isEntry ? "口岸上车" : "发车"}</small></span>
+      <span class="directory-card__main">${item.route.labelName ? `<small class="directory-card__label">${escapeHtml(item.route.labelName)}</small>` : ""}<strong>${escapeHtml(item.route.route_name)}</strong><small>${routePath}</small></span>
+      <span class="departure-card__ride-row">
+        <span class="boarding-stack">${boardingMarkup}</span>
+        <span class="vehicle-chip ${vehicleTone}"><strong data-live="status">${escapeHtml(statusLabel)}</strong><small data-live="countdown">${escapeHtml(countdownLabel)}</small></span>
+      </span>
+      <span class="directory-card__meta"><strong>${routeStops.length}</strong><small>站</small></span>
+      <span class="directory-card__expand" aria-hidden="true"></span>
+    </button>
     <div class="route-details" id="${detailsId}" aria-hidden="${expanded ? "false" : "true"}"${expanded ? ' data-rendered="1"' : " inert"}>
       <div class="route-details__inner">
         <div class="route-details__body">${expanded ? timelineHtml(item) : ""}</div>
