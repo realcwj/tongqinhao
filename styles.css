@@ -232,6 +232,17 @@ svg { display: block; }
   to { opacity: 1; transform: none; }
 }
 
+@keyframes dotRingIn {
+  0% { opacity: .6; transform: scale(2.6); }
+  70% { opacity: .2; }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes dotHalo {
+  0%, 100% { box-shadow: 0 0 0 1px var(--dot-ring), 0 0 9px var(--dot-glow); }
+  50% { box-shadow: 0 0 0 3px var(--dot-ring), 0 0 15px var(--dot-glow); }
+}
+
 .page-shell {
   min-height: 100vh;
   padding-bottom: 12px;
@@ -1819,16 +1830,39 @@ h2 {
 }
 
 .timeline-stop.is-boarding .timeline-dot {
+  --dot-ring: var(--gold-bright);
+  --dot-glow: rgba(185, 136, 97, .4);
   background: var(--gold-bright);
-  box-shadow: 0 0 0 1px var(--gold-bright), 0 0 10px rgba(185, 136, 97, .4);
+  box-shadow: 0 0 0 1px var(--dot-ring), 0 0 9px var(--dot-glow);
+  animation: dotHalo 1.8s var(--ease) infinite;
 }
 
 .timeline-stop.is-boarding strong { color: var(--gold); }
 
 .timeline-stop.is-allowed .timeline-dot {
+  --dot-ring: var(--macau);
+  --dot-glow: rgba(64, 163, 130, .35);
   background: var(--macau);
-  box-shadow: 0 0 0 1px var(--macau), 0 0 10px rgba(64, 163, 130, .35);
+  box-shadow: 0 0 0 1px var(--dot-ring), 0 0 9px var(--dot-glow);
+  animation: dotHalo 1.8s var(--ease) infinite;
 }
+
+.timeline-stop.is-boarding .timeline-dot::before,
+.timeline-stop.is-allowed .timeline-dot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid currentColor;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: center;
+  will-change: transform, opacity;
+  animation: dotRingIn 1.8s var(--ease) infinite;
+}
+
+.timeline-stop.is-boarding .timeline-dot::before { border-color: var(--gold-bright); }
+.timeline-stop.is-allowed .timeline-dot::before { border-color: var(--macau); }
 
 /* ============================================================
    空状态 / 页脚
