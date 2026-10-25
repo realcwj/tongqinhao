@@ -59,52 +59,108 @@ function routeKey(route) {
 }
 
 function renderRoutes() {
-  const nowMinutes = currentMinutes();
+  const now = new Date();
   const routes = state.routes
     .filter((route) => {
       const matchesFilter = state.filter === "all" || route.direction === state.filter;
       const matchesSearch = !state.query || route.searchText.includes(state.query);
       return matchesFilter && matchesSearch;
     })
-    .sort((a, b) => minutesUntilDeparture(a, nowMinutes) - minutesUntilDeparture(b, nowMinutes));
+    .sort((a, b) => minutesUntilDeparture(a, now) - minutesUntilDeparture(b, now));
   els.count.textContent = `${routes.length} / ${state.routes.length} 条`;
   els.empty.hidden = routes.length > 0;
-  els.directory.innerHTML = routes.map((route) => routeCardHtml(route, nowMinutes)).join("");
+  els.directory.innerHTML = routes.map((route) => routeCardHtml(route, now)).join("");
 }
 
-// 距当前时间最近的发车排在最前；今天已过的班次视为次日，排在当日班次之后；暂无发车计划排在最后
-function minutesUntilDeparture(route, nowMinutes) {
+// 距当前时间最近的实际发车排在最前；暂无发车计划的排最后
+function minutesUntilDeparture(route, now) {
   if (route.has_schedule === false) return Number.POSITIVE_INFINITY;
-  const firstMinutes = parseTime(route.stops[0]?.time);
-  if (firstMinutes == null) return Number.POSITIVE_INFINITY;
-  return firstMinutes >= nowMinutes ? firstMinutes - nowMinutes : firstMinutes + 1440 - nowMinutes;
+  const info = nextDepartureInfo(route, route.stops[0]?.time, now);
+  return info ? info.minutesUntil : Number.POSITIVE_INFINITY;
 }
 
-function currentMinutes() {
-  const now = new Date();
-  return now.getHours() * 60 + now.getMinutes();
+// 解析 YYYY-MM-DD（按本地日期构造，避免 new Date("YYYY-MM-DD") 被当成 UTC）
+function parseDateKey(value) {
+  const match = typeof value === "string" ? value.match(/^(\d{4})-(\d{2})-(\d{2})$/) : null;
+  return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
 }
 
-function routeCardHtml(route, nowMinutes) {
+function startOfDay(now = new Date()) {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function todayKey(now = new Date()) {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function monthDayLabel(dateText) {
+  const date = parseDateKey(dateText);
+  return date ? `${date.getMonth() + 1}/${date.getDate()}` : "";
+}
+
+// 该班次在当前时间之后的下一次实际开行（dates 为该班次的开行日期，由接口提供）
+function nextDepartureInfo(route, timeText, now = new Date()) {
+  const departureMinutes = parseTime(timeText);
+  if (departureMinutes == null) return null;
+  const dates = Array.isArray(route?.dates) ? route.dates : [];
+  if (!dates.length) return null;
+  const today = startOfDay(now);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  for (const dateText of [...dates].sort()) {
+    const date = parseDateKey(dateText);
+    if (!date) continue;
+    const dayOffset = Math.round((date - today) / 86400000);
+    if (dayOffset < 0) continue;
+    // 当天的发车时间已过，则看下一个开行日期
+    if (dayOffset === 0 && departureMinutes < nowMinutes) continue;
+    return { dateText, dayOffset, minutesUntil: dayOffset * 1440 + departureMinutes - nowMinutes };
+  }
+  return null;
+}
+
+function routeCardHtml(route, now) {
   const detailsId = `route-${routeKey(route)}-${route.firstRegion}-${route.lastRegion}`;
-  const hasSchedule = route.has_schedule !== false;
-  const status = vehicleStatus(route.stops, new Date());
   const first = route.stops[0];
   const last = route.stops[route.stops.length - 1];
-  const firstMinutes = parseTime(first?.time);
-  const isNextDay = firstMinutes != null && firstMinutes < nowMinutes;
-  // 次日班次（当日已收车）改提示"次日发车"，正在运行的班次仍显示实时位置；暂无发车计划单独标记
-  const chip = !hasSchedule
-    ? { label: "暂无发车计划", detail: "未来几天无班次", tone: "is-idle" }
-    : isNextDay && status.tone === "is-finished"
-      ? { label: "次日发车", detail: `${minutesText(firstMinutes + 1440 - nowMinutes)}后`, tone: "is-waiting" }
-      : status;
+  const dates = Array.isArray(route.dates) ? route.dates : [];
+  const operatesToday = route.has_schedule !== false && dates.includes(todayKey(now));
+  const status = route.has_schedule === false ? null : vehicleStatus(route.stops, now);
+  const info = route.has_schedule === false ? null : nextDepartureInfo(route, first?.time, now);
+  // 今天正在运行/未发车时显示实时状态；否则显示下一次实际发车的日期
+  const liveToday = operatesToday && status && status.tone !== "is-finished";
+  const chip = liveToday
+    ? status
+    : info
+      ? {
+          label: "未发车",
+          detail: info.dayOffset === 1 ? "次日发车" : `${monthDayLabel(info.dateText)} 发车`,
+          tone: "is-waiting",
+        }
+      : operatesToday && status
+        ? { label: "今日已结束", detail: "无后续班次", tone: "is-finished" }
+        : { label: "暂无发车计划", detail: "未来几天无班次", tone: "is-idle" };
+  const startLabel = !info
+    ? operatesToday && status
+      ? "今日已结束"
+      : "暂无发车计划"
+    : info.dayOffset === 1
+      ? "次日始发"
+      : info.dayOffset > 1
+        ? `${monthDayLabel(info.dateText)} 始发`
+        : "始发";
+  const showTime = Boolean(info) || operatesToday;
+  const timeText = showTime ? first?.time || "--:--" : "--:--";
+  const rangeText = info
+    ? `${info.dayOffset > 0 ? `${monthDayLabel(info.dateText)} ` : ""}${first?.time || "--:--"} - ${last?.time || "--:--"}`
+    : showTime
+      ? `${first?.time || "--:--"} - ${last?.time || "--:--"}`
+      : "暂无发车计划";
   const directionText = route.firstRegion === route.lastRegion
     ? `${regionLabel(route.firstRegion)}区域线路`
     : `${regionLabel(route.firstRegion)} → ${regionLabel(route.lastRegion)}`;
   return `<article class="directory-card">
     <button type="button" class="directory-card__summary" data-route-id="${routeKey(route)}" aria-expanded="false" aria-controls="${detailsId}">
-      <span class="directory-card__time"><strong>${hasSchedule ? escapeHtml(first?.time || "--:--") : "--:--"}</strong><small>${hasSchedule ? (isNextDay ? "次日始发" : "始发") : "暂无发车计划"}</small></span>
+      <span class="directory-card__time"><strong>${escapeHtml(timeText)}</strong><small>${escapeHtml(startLabel)}</small></span>
       <span class="directory-card__main"><strong>${escapeHtml(route.route_name)}</strong><small>${escapeHtml(first?.name || "未知站点")} → ${escapeHtml(last?.name || "未知站点")}</small></span>
       <span class="direction-chip direction-chip--${route.firstRegion}">${directionText}</span>
       <span class="vehicle-chip ${chip.tone}"><strong>${escapeHtml(chip.label)}</strong><small>${escapeHtml(chip.detail)}</small></span>
@@ -112,7 +168,7 @@ function routeCardHtml(route, nowMinutes) {
       <span class="directory-card__expand" aria-hidden="true">+</span>
     </button>
     <div class="directory-card__details" id="${detailsId}" hidden>
-      <div class="directory-route-head"><span>线路编号 ${route.id}</span><strong>${hasSchedule ? `${escapeHtml(first?.time || "--:--")} - ${escapeHtml(last?.time || "--:--")}` : "暂无发车计划"}</strong></div>
+      <div class="directory-route-head"><span>线路编号 ${route.id}</span><strong>${escapeHtml(rangeText)}</strong></div>
       <ol class="directory-timeline">${route.stops.map((stop, index) => stopHtml(stop, index, route.stops.length)).join("")}</ol>
     </div>
   </article>`;

@@ -268,147 +268,252 @@ def merge_route_stops(stops_payload: dict[str, Any]) -> list[dict[str, Any]]:
 	return stops
 
 
-def build_processed_payload(
-	routes: list[dict[str, Any]],
-	stops_by_route_id: dict[int, dict[str, Any]],
-	schedule_by_route_id: dict[int, dict[str, list[str]]],
-	warnings: list[str] | None = None,
-) -> dict[str, Any]:
-	"""按发车班次整理线路和站点详情，生成根目录 processed.json 的内容。
+def build_route_entries(
+	route: dict[str, Any],
+	stops_payload: dict[str, Any],
+	schedule: dict[str, list[str]],
+	warnings: list[str],
+) -> list[dict[str, Any]]:
+	"""把单条线路的站点与发车时间整理成若干班次条目。
 
-	站点接口只会返回「当前班次」的站点时刻，因此先通过发车时间接口取到
-	该线路的全部发车时间（含未来几天的开行日期），再把站点时刻整体平移到
-	每个发车时间上，从而得到每个班次各自的站点时刻（同线路各班次的相对时刻一致）。
-
+	站点接口只会返回「当前班次」的站点时刻，因此用发车时间接口返回的发车时间
+	把站点时刻整体平移，得到每个班次各自的站点时刻（同线路各班次的相对时刻一致）。
 	若发车时间接口没有返回任何发车时间，说明该线路未来几天没有发车计划，
-	此时按「暂无发车计划」输出（departure 为 null、dates 为空、has_schedule 为 false），
-	不再用站点时刻兜底成班次。
+	此时按「暂无发车计划」输出（departure 为 null、dates 为空、has_schedule 为 false）。
 	"""
-	notes = warnings if warnings is not None else []
-	processed_routes: list[dict[str, Any]] = []
+	route_id = route["id"]
+	stops = merge_route_stops(stops_payload)
+	stops_data = stops_payload.get("data")
+	route_name = route.get("name") or (
+		stops_data.get("route_name") if isinstance(stops_data, dict) else None
+	)
 
+	departures = sorted(schedule)
+	if not departures:
+		warnings.append(f"线路 {route_id} 未来几天没有发车计划，已按「暂无发车计划」输出")
+		return [
+			{
+				"id": route_id,
+				"uid": str(route_id),
+				"departure": None,
+				"dates": [],
+				"has_schedule": False,
+				"route_name": route_name,
+				"bus_id": route.get("bus_id"),
+				"stops": stops,
+			}
+		]
+
+	base_time = stops[0]["time"] if stops else None
+	base_minutes = time_to_minutes(base_time)
+	if base_minutes is None:
+		warnings.append(f"线路 {route_id} 缺少可用的站点时刻，已按发车时间原样输出")
+
+	entries: list[dict[str, Any]] = []
+	for departure in departures:
+		departure_minutes = time_to_minutes(departure)
+		offset = (
+			departure_minutes - base_minutes
+			if base_minutes is not None and departure_minutes is not None
+			else 0
+		)
+		entries.append(
+			{
+				"id": route_id,
+				"uid": f"{route_id}@{departure}",
+				"departure": departure,
+				"dates": list(schedule.get(departure, [])),
+				"has_schedule": True,
+				"route_name": route_name,
+				"bus_id": route.get("bus_id"),
+				"stops": [{**stop, "time": shift_time(stop["time"], offset)} for stop in stops],
+			}
+		)
+	return entries
+
+
+def group_entries_by_route_id(entries: Any) -> dict[int, list[dict[str, Any]]]:
+	"""按线路 ID 归类已有的班次条目。"""
+	grouped: dict[int, list[dict[str, Any]]] = {}
+	if not isinstance(entries, list):
+		return grouped
+	for entry in entries:
+		if not isinstance(entry, dict):
+			continue
+		route_id = entry.get("id")
+		if isinstance(route_id, int):
+			grouped.setdefault(route_id, []).append(entry)
+	return grouped
+
+
+def prune_entries(entries: list[dict[str, Any]], today: str) -> list[dict[str, Any]]:
+	"""清理旧数据中已经过去的开行日期，没有剩余日期的班次直接丢弃。
+
+	「暂无发车计划」（has_schedule 为 False）的条目本身没有日期，原样保留。
+	"""
+	kept: list[dict[str, Any]] = []
+	for entry in entries:
+		dates = {
+			date_text
+			for date_text in entry.get("dates") or []
+			if isinstance(date_text, str) and date_text >= today
+		}
+		if dates:
+			kept.append({**entry, "dates": sorted(dates)})
+		elif entry.get("has_schedule") is False:
+			kept.append({**entry, "dates": []})
+	return kept
+
+
+def merge_processed_routes(
+	routes: list[dict[str, Any]],
+	fresh_entries_by_route_id: dict[int, list[dict[str, Any]]],
+	previous_entries_by_route_id: dict[int, list[dict[str, Any]]],
+	failed_route_ids: set[int],
+	today: str,
+	warnings: list[str],
+) -> list[dict[str, Any]]:
+	"""按线路合并新旧数据。
+
+	抓取成功的线路以本次抓取的数据为准（完整覆盖旧数据）；
+	抓取失败的线路沿用旧数据，只清理早于今天的日期，日期全部过期的班次会被移除。
+	"""
+	merged: list[dict[str, Any]] = []
 	for route in routes:
 		route_id = route.get("id")
 		if not isinstance(route_id, int):
 			continue
 
-		stops = merge_route_stops(stops_by_route_id.get(route_id, {}))
-		base_time = stops[0]["time"] if stops else None
-		base_minutes = time_to_minutes(base_time)
-
-		schedule = schedule_by_route_id.get(route_id) or {}
-		departures = sorted(schedule)
-		if not departures:
-			notes.append(f"线路 {route_id} 未来几天没有发车计划，已按「暂无发车计划」输出")
-			processed_routes.append(
-				{
-					"id": route_id,
-					"uid": str(route_id),
-					"departure": None,
-					"dates": [],
-					"has_schedule": False,
-					"route_name": route.get("name"),
-					"bus_id": route.get("bus_id"),
-					"stops": stops,
-				}
-			)
+		if route_id not in failed_route_ids:
+			merged.extend(fresh_entries_by_route_id.get(route_id, []))
 			continue
-		if base_minutes is None:
-			notes.append(f"线路 {route_id} 缺少可用的站点时刻，已按发车时间原样输出")
 
-		for departure in departures:
-			offset = 0
-			departure_minutes = time_to_minutes(departure)
-			if base_minutes is not None and departure_minutes is not None:
-				offset = departure_minutes - base_minutes
-
-			processed_routes.append(
-				{
-					"id": route_id,
-					"uid": f"{route_id}@{departure}",
-					"departure": departure,
-					"dates": list(schedule.get(departure, [])),
-					"has_schedule": True,
-					"route_name": route.get("name"),
-					"bus_id": route.get("bus_id"),
-					"stops": [{**stop, "time": shift_time(stop["time"], offset)} for stop in stops],
-				}
+		previous_entries = previous_entries_by_route_id.get(route_id, [])
+		kept = prune_entries(previous_entries, today)
+		if not previous_entries:
+			warnings.append(f"线路 {route_id} 抓取失败且没有可沿用的旧数据，已跳过")
+		elif not kept:
+			warnings.append(
+				f"线路 {route_id} 抓取失败，旧数据的开行日期已全部过期，已从数据中移除"
 			)
+		merged.extend(kept)
+	return merged
 
+
+def build_processed_payload(routes: list[dict[str, Any]]) -> dict[str, Any]:
+	"""组装最终写入 processed.json 的内容。"""
 	return {
 		"label_id": DEFAULT_LABEL_ID,
 		"label_name": "跨境通勤线",
-		"route_count": len(processed_routes),
-		"routes": processed_routes,
+		"route_count": len(routes),
+		"routes": routes,
 	}
 
 
-def main() -> int:
+def load_json(output_path: Path) -> Any | None:
+	"""读取已有 JSON；文件不存在或格式异常时返回 None。"""
+	try:
+		return json.loads(output_path.read_text(encoding="utf-8"))
+	except (OSError, json.JSONDecodeError):
+		return None
+
+
+def run_update() -> int:
+	"""抓取全部线路，按线路与旧数据合并后写入 processed.json。"""
+	warnings: list[str] = []
+	today = today_in_beijing()
+
+	previous_payload = load_json(PROCESSED_OUTPUT)
+	previous_entries = (
+		previous_payload.get("routes") if isinstance(previous_payload, dict) else None
+	)
+	previous_by_route_id = group_entries_by_route_id(previous_entries)
+
 	try:
 		routes_payload = get_cross_border_routes()
+	except RouteApiError as exc:
+		if not previous_by_route_id:
+			raise
+		print(f"获取线路列表失败，将沿用旧数据并清理过期日期: {exc}", file=sys.stderr)
+		routes = [
+			{
+				"id": route_id,
+				"name": entries[0].get("route_name"),
+				"bus_id": entries[0].get("bus_id"),
+			}
+			for route_id, entries in previous_by_route_id.items()
+		]
+	else:
 		save_json(routes_payload, ROUTES_OUTPUT)
 		print_route_summary(routes_payload)
-
 		routes = routes_payload.get("data", [])
 		if not isinstance(routes, list):
 			raise RouteApiError("线路接口返回的 data 不是列表")
 
-		stops_by_route_id: dict[int, dict[str, Any]] = {}
-		schedule_by_route_id: dict[int, dict[str, list[str]]] = {}
-		for index, route in enumerate(routes, start=1):
-			if not isinstance(route, dict) or not isinstance(route.get("id"), int):
-				print(f"跳过第 {index} 条无效线路: {route!r}", file=sys.stderr)
-				continue
-			route_id = route["id"]
+	fresh_entries_by_route_id: dict[int, list[dict[str, Any]]] = {}
+	failed_route_ids: set[int] = set()
 
-			try:
-				schedule = get_route_schedule(route_id)
-			except RouteApiError as exc:
-				print(f"获取线路 {route_id} 发车时间失败，将按站点时刻兜底: {exc}", file=sys.stderr)
-				schedule = {}
+	for index, route in enumerate(routes, start=1):
+		if not isinstance(route, dict) or not isinstance(route.get("id"), int):
+			print(f"跳过第 {index} 条无效线路: {route!r}", file=sys.stderr)
+			continue
+		route_id = route["id"]
 
-			try:
-				stops_payload = get_route_stops(route_id)
-			except RouteApiError as exc:
-				print(f"获取线路 {route_id} 详情失败: {exc}", file=sys.stderr)
-				continue
-
-			output_path = OUTPUT_DIR / f"route_{route_id}.json"
-			save_json(stops_payload, output_path)
-			stops_by_route_id[route_id] = stops_payload
-			schedule_by_route_id[route_id] = schedule
-			departure_text = (
-				"、".join(
-					f"{time_text}（{len(dates)} 天）" for time_text, dates in schedule.items()
-				)
-				if schedule
-				else "暂无发车计划"
-			)
+		try:
+			schedule = get_route_schedule(route_id)
+			stops_payload = get_route_stops(route_id)
+		except (RouteApiError, ValueError, OSError) as exc:
+			failed_route_ids.add(route_id)
 			print(
-				f"[{index}/{len(routes)}] 线路 {route_id} 详情已保存: {output_path}"
-				f"（发车时间：{departure_text}）"
+				f"线路 {route_id} 获取失败，沿用旧数据并清理过期日期: {exc}",
+				file=sys.stderr,
 			)
+			continue
 
-		warnings: list[str] = []
-		processed_payload = build_processed_payload(
-			routes, stops_by_route_id, schedule_by_route_id, warnings
+		save_json(stops_payload, OUTPUT_DIR / f"route_{route_id}.json")
+		fresh_entries_by_route_id[route_id] = build_route_entries(
+			route, stops_payload, schedule, warnings
 		)
-		for warning in warnings:
-			print(f"提示: {warning}", file=sys.stderr)
-		save_json(processed_payload, PROCESSED_OUTPUT)
-		print(
-			f"整理后的班次数据已保存到: {PROCESSED_OUTPUT}"
-			f"（共 {processed_payload['route_count']} 个班次）"
+		departure_text = (
+			"、".join(
+				f"{time_text}（{len(dates)} 天）" for time_text, dates in schedule.items()
+			)
+			if schedule
+			else "暂无发车计划"
 		)
-		print(f"所有内容已保存到: {OUTPUT_DIR}")
+		print(f"[{index}/{len(routes)}] 线路 {route_id} 更新成功（发车时间：{departure_text}）")
 
-		sync_date = today_in_beijing()
-		if update_sync_date(CONFIG_PATH, sync_date):
-			print(f"config.js 中的数据同步日期已更新为: {sync_date}")
-	except (RouteApiError, ValueError, OSError) as exc:
-		print(f"获取班次失败: {exc}", file=sys.stderr)
-		return 1
+	merged_routes = merge_processed_routes(
+		routes,
+		fresh_entries_by_route_id,
+		previous_by_route_id,
+		failed_route_ids,
+		today,
+		warnings,
+	)
+	processed_payload = build_processed_payload(merged_routes)
+
+	for warning in warnings:
+		print(f"提示: {warning}", file=sys.stderr)
+	save_json(processed_payload, PROCESSED_OUTPUT)
+	print(
+		f"更新完成：成功 {len(fresh_entries_by_route_id)} 条线路，"
+		f"沿用旧数据 {len(failed_route_ids)} 条线路；"
+		f"{PROCESSED_OUTPUT} 共 {processed_payload['route_count']} 个班次"
+	)
+	print(f"原始响应目录: {OUTPUT_DIR}")
+
+	if update_sync_date(CONFIG_PATH, today):
+		print(f"config.js 中的数据同步日期已更新为: {today}")
 	return 0
+
+
+def main() -> int:
+	try:
+		return run_update()
+	except (RouteApiError, ValueError, OSError) as exc:
+		print(f"更新失败: {exc}", file=sys.stderr)
+		return 1
 
 
 if __name__ == "__main__":

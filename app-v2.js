@@ -525,7 +525,7 @@ function renderDepartures() {
     return;
   }
 
-  const nowMinutes = currentMinutes();
+  const now = new Date();
   const routeDepartures = new Map();
   (state.data.routes || []).forEach((route) => {
     // 未来几天没有发车计划的线路不参与班次查询
@@ -538,7 +538,7 @@ function renderDepartures() {
         if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(boardingStop.stop_id)))) return;
         const allowedStops = allowedDropOffStops(route.stops, boardingIndex, state.currentRegion, state.destinationRegion);
         if (!allowedStops.length || !matchesDropOffFilter(allowedStops)) return;
-        addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, allowedStops, nowMinutes, false);
+        addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, allowedStops, now, false);
       });
       return;
     }
@@ -548,7 +548,7 @@ function renderDepartures() {
     if (!state.selectedStops.some((stop) => stop.stopIds.has(Number(entry.stop.stop_id)))) return;
     const allowedStops = entryAllowedStops(route.stops, entry.index, state.currentRegion);
     if (!allowedStops.length || !matchesDropOffFilter(allowedStops)) return;
-    addBoardingLeg(routeDepartures, route, entry.stop, entry.index, allowedStops, nowMinutes, true);
+    addBoardingLeg(routeDepartures, route, entry.stop, entry.index, allowedStops, now, true);
   });
   const departures = [...routeDepartures.values()].sort((a, b) => a.minutesUntil - b.minutesUntil);
 
@@ -611,16 +611,51 @@ function routeKey(route) {
   return route?.uid || String(route?.id);
 }
 
+// 解析 YYYY-MM-DD（按本地日期构造，避免 new Date("YYYY-MM-DD") 被当成 UTC）
+function parseDateKey(value) {
+  const match = typeof value === "string" ? value.match(/^(\d{4})-(\d{2})-(\d{2})$/) : null;
+  return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
+}
+
+function startOfDay(now = new Date()) {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function monthDayLabel(dateText) {
+  const date = parseDateKey(dateText);
+  return date ? `${date.getMonth() + 1}/${date.getDate()}` : "";
+}
+
+// 该班次在当前时间之后的下一次实际开行（dates 为该班次的开行日期，由接口提供）
+function nextDepartureInfo(route, timeText, now = new Date()) {
+  const departureMinutes = parseTime(timeText);
+  if (departureMinutes == null) return null;
+  const dates = Array.isArray(route?.dates) ? route.dates : [];
+  if (!dates.length) return null;
+  const today = startOfDay(now);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  for (const dateText of [...dates].sort()) {
+    const date = parseDateKey(dateText);
+    if (!date) continue;
+    const dayOffset = Math.round((date - today) / 86400000);
+    if (dayOffset < 0) continue;
+    // 当天的发车时间已过，则看下一个开行日期
+    if (dayOffset === 0 && departureMinutes < nowMinutes) continue;
+    return { dateText, dayOffset, minutesUntil: dayOffset * 1440 + departureMinutes - nowMinutes };
+  }
+  return null;
+}
+
 // 同一线路在本区域可能有多个可上车站点，合并为一张卡片（时间列显示“07:32 或 07:36”）
-function addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, allowedStops, nowMinutes, isEntry) {
-  const departureMinutes = parseTime(boardingStop.time);
-  if (departureMinutes == null) return;
-  const isNextDay = departureMinutes < nowMinutes;
+function addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, allowedStops, now, isEntry) {
+  const info = nextDepartureInfo(route, boardingStop.time, now);
+  if (!info) return;
   const leg = {
     stop: boardingStop,
     index: boardingIndex,
-    isNextDay,
-    minutesUntil: isNextDay ? departureMinutes + 1440 - nowMinutes : departureMinutes - nowMinutes,
+    dateText: info.dateText,
+    dayOffset: info.dayOffset,
+    minutesUntil: info.minutesUntil,
   };
   let item = routeDepartures.get(routeKey(route));
   if (!item) {
@@ -630,7 +665,7 @@ function addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, all
       boardingIndexes: [],
       allowedStops: [],
       minutesUntil: leg.minutesUntil,
-      isNextDay: leg.isNextDay,
+      dayOffset: leg.dayOffset,
       isEntry,
     };
     routeDepartures.set(routeKey(route), item);
@@ -641,7 +676,7 @@ function addBoardingLeg(routeDepartures, route, boardingStop, boardingIndex, all
   mergeStopList(item.allowedStops, allowedStops);
   if (leg.minutesUntil < item.minutesUntil) {
     item.minutesUntil = leg.minutesUntil;
-    item.isNextDay = leg.isNextDay;
+    item.dayOffset = leg.dayOffset;
   }
 }
 
@@ -657,15 +692,26 @@ function mergeStopList(target, stops) {
 
 function departureHtml(item, index) {
   const detailsId = `route-details-${routeKey(item.route)}-${index}`;
-  const statusLabel = vehicleStatus(item.route.stops, new Date(), item.isNextDay);
-  const departureText = item.minutesUntil === 0 ? "即将发车" : `${item.minutesUntil} 分钟后`;
+  const isToday = item.dayOffset === 0;
+  const statusLabel = isToday ? vehicleStatus(item.route.stops, new Date()) : "未发车";
+  const departureText = item.minutesUntil === 0
+    ? "即将发车"
+    : item.dayOffset > 0
+      ? `${item.dayOffset} 天后`
+      : `${item.minutesUntil} 分钟后`;
+  const dayPrefix = (leg) => (leg.dayOffset === 1
+    ? '<span class="departure-card__day">次日</span> '
+    : leg.dayOffset > 1
+      ? `<span class="departure-card__day">${escapeHtml(monthDayLabel(leg.dateText))}</span> `
+      : "");
+  const boardingDayPrefix = (leg) => (leg.dayOffset === 1 ? "次日 " : leg.dayOffset > 1 ? `${monthDayLabel(leg.dateText)} ` : "");
   const timeLabel = item.boardingStops
-    .map((leg) => `${leg.isNextDay ? '<span class="departure-card__day">次日</span> ' : ""}${escapeHtml(leg.stop.time || "--:--")}`)
+    .map((leg) => `${dayPrefix(leg)}${escapeHtml(leg.stop.time || "--:--")}`)
     .join(' <span class="departure-card__or">或</span><br>');
   const routeStops = item.route.stops || [];
   const routePath = `${escapeHtml(routeStops[0]?.name || "未知站点")} → ${escapeHtml(routeStops[routeStops.length - 1]?.name || "未知站点")}`;
   const boardingStops = item.boardingStops
-    .map((leg) => `${leg.isNextDay ? "次日 " : ""}${escapeHtml(leg.stop.time || "--:--")} ${escapeHtml(leg.stop.name)}`)
+    .map((leg) => `${boardingDayPrefix(leg)}${escapeHtml(leg.stop.time || "--:--")} ${escapeHtml(leg.stop.name)}`)
     .join("、");
   return `<article class="departure-card departure-card--expanded${index === 0 ? " is-next" : ""}${item.isEntry ? " departure-card--entry" : ""}" data-departure-index="${index}">
     <div class="departure-card__summary">
@@ -709,11 +755,11 @@ function routeTimelineHtml(stops, boardingIndexes, allowedStops, dropOffKeys, bo
   }).join("");
 }
 
-function vehicleStatus(stops, now, isNextDay = false) {
+function vehicleStatus(stops, now) {
   const nowValue = now.getHours() * 60 + now.getMinutes();
   const timed = stops.map((stop) => ({ stop, minutes: parseTime(stop.time) })).filter((item) => item.minutes != null);
   if (!timed.length) return "时间待确认";
-  if (isNextDay || nowValue < timed[0].minutes) return "未发车";
+  if (nowValue < timed[0].minutes) return "未发车";
   if (nowValue >= timed[timed.length - 1].minutes) return "已结束";
   for (let index = 0; index < timed.length - 1; index += 1) {
     const current = timed[index];
@@ -744,7 +790,6 @@ function reverseDirection(direction) { return String(direction) === "1-2" ? "2-1
 function canBoardFrom(stop, direction) {
   return stop.boardingDirections.has(direction) || stop.entryBoardingDirections.has(direction);
 }
-function currentMinutes() { const now = new Date(); return now.getHours() * 60 + now.getMinutes(); }
 function parseTime(value) {
   const match = typeof value === "string" ? value.match(/^(\d{1,2}):(\d{2})$/) : null;
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
