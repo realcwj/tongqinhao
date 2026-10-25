@@ -138,7 +138,7 @@ h2 { margin-top: 8px; font-size: 26px; letter-spacing: -.045em; }
 .station-picker__empty { padding: 16px 8px; color: var(--muted); font-size: 10px; text-align: center; }
 
 .ai-badge { display: inline-flex; align-items: center; gap: 6px; color: #8c7bdf; font-size: 10px; font-weight: 700; }
-.direction-toggle { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+.direction-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 .direction-option { display: flex; align-items: center; gap: 13px; border: 1px solid var(--line); border-radius: 15px; padding: 16px 19px; color: var(--ink); background: #fff; text-align: left; transition: .2s; }
 .direction-option:hover, .direction-option.is-selected { border-color: #8ae7c6; box-shadow: 0 10px 30px rgba(29, 37, 55, .05); }
 .direction-option.is-selected { background: #effcf7; }
@@ -359,7 +359,6 @@ h2 { margin-top: 8px; font-size: 26px; letter-spacing: -.045em; }
   .station-picker { width: 100%; }
   .station-picker__menu { position: fixed; top: auto; right: 16px; bottom: 16px; left: 16px; width: auto; }
   .quick-actions { grid-template-columns: 1fr; }
-  .direction-toggle { grid-template-columns: 1fr; }
   .departure-card__summary { grid-template-columns: 96px 1fr; gap: 13px; padding: 14px; }
   .departure-card__countdown { grid-column: 2; min-width: auto; text-align: left; }
   .route-toggle { grid-column: 1 / -1; justify-content: space-between; width: 100%; }

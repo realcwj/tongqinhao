@@ -4,6 +4,7 @@ const state = {
   stops: [],
   userPosition: null,
   currentRegion: null,
+  selectedOption: null,
   selectedStops: [],
   destinationRegions: [],
   nearbyStops: [],
@@ -43,7 +44,7 @@ async function init() {
     if (els.routesButtonHint) els.routesButtonHint.textContent = `${state.allRoutes.length} 条线路总览`;
     els.locationHint.textContent = `共收录 ${state.stops.length} 个站点，定位后自动判断所在区域`;
     setLocationState("等待获取位置，也可以先手动选择所在区域", false);
-    if (state.currentRegion) setCurrentRegion(state.currentRegion, false);
+    if (state.currentRegion) setCurrentOption(state.selectedOption, false);
     requestLocation();
   } catch (error) {
     showFatalError(error);
@@ -56,7 +57,7 @@ function cacheElements() {
   els.locationState = document.querySelector("#locationState");
   els.locationStateText = document.querySelector("#locationStateText");
   els.regionReason = document.querySelector("#regionReason");
-  els.regionButtons = [...document.querySelectorAll("[data-region]")];
+  els.regionButtons = [...document.querySelectorAll("[data-option]")];
   els.stationGrid = document.querySelector("#stationGrid");
   els.nearbyEmpty = document.querySelector("#nearbyEmpty");
   els.retryLocationButton = document.querySelector("#retryLocationButton");
@@ -86,7 +87,7 @@ function bindEvents() {
   els.locateButton.addEventListener("click", () => requestLocation(true));
   els.retryLocationButton.addEventListener("click", () => requestLocation(true));
   els.regionButtons.forEach((button) => {
-    button.addEventListener("click", () => setCurrentRegion(button.dataset.region, false));
+    button.addEventListener("click", () => setCurrentOption(button.dataset.option, false));
   });
   els.quickButtons.forEach((button) => {
     button.addEventListener("click", () => quickSelect(button.dataset.quick));
@@ -267,7 +268,7 @@ function onLocationSuccess(position) {
     .map((stop) => ({ ...stop, distanceKm: haversineKm(state.userPosition.lat, state.userPosition.lng, stop.lat, stop.lng) }))
     .sort((a, b) => a.distanceKm - b.distanceKm)[0];
   const inferredRegion = nearest?.region || inferRegionFromCoordinates(state.userPosition.lat, state.userPosition.lng);
-  setCurrentRegion(inferredRegion, true);
+  setCurrentOption(defaultOptionForRegion(inferredRegion), true);
   els.locateButton.disabled = false;
   els.locateButton.querySelector("strong").textContent = "刷新当前位置";
   setLocationState(`已定位 · ${state.userPosition.lat.toFixed(4)}, ${state.userPosition.lng.toFixed(4)}`, false);
@@ -292,13 +293,16 @@ function showLocationError(message, keepManual) {
   if (keepManual && state.currentRegion) refreshStationsForRegion();
 }
 
-function setCurrentRegion(region, automatic) {
-  state.currentRegion = String(region);
-  els.regionButtons.forEach((button) => button.classList.toggle("is-selected", button.dataset.region === state.currentRegion));
+function setCurrentOption(option, automatic) {
+  const [originRegion, destinationRegion] = String(option || "").split("-");
+  if (!originRegion || !destinationRegion) return;
+  state.selectedOption = `${originRegion}-${destinationRegion}`;
+  state.currentRegion = originRegion;
+  state.destinationRegions = [destinationRegion];
+  els.regionButtons.forEach((button) => button.classList.toggle("is-selected", button.dataset.option === state.selectedOption));
   els.regionReason.innerHTML = automatic
-    ? `根据定位自动判断你当前在 <strong>${regionLabel(state.currentRegion)}</strong>，也可以手动切换`
-    : `已手动选择当前在 <strong>${regionLabel(state.currentRegion)}</strong>`;
-  state.destinationRegions = allowedDestinationRegions(state.currentRegion);
+    ? `根据定位自动判断你当前在 <strong>${regionLabel(originRegion)}</strong>，已选择「${regionLabel(originRegion)} → ${regionLabel(destinationRegion)}」，也可以手动切换`
+    : `已选择「${regionLabel(originRegion)} → ${regionLabel(destinationRegion)}」`;
   refreshStationsForRegion();
 }
 
@@ -513,18 +517,17 @@ function stopKeyFromRaw(stop) {
   return `${stop.region}|${cleanStopName(stop.name)}`;
 }
 
-// 快速选择预设：boardingPattern 为 null 时，上车点取当前区域内的附近站点（最多 MAX_NEARBY_STATIONS 个）
+// 快速选择预设：option 为出行方向（起点-终点）；boardingPattern 为 null 时，上车点取当前方向内的附近站点
 const QUICK_PRESETS = {
-  "university-to-uma": { boardingRegion: "1", boardingPattern: /澳门新街坊|荔枝湾|横琴检察院（往口岸）/, dropPattern: /澳大/ },
-  "uma-to-university": { boardingRegion: "2", boardingPattern: /澳大/, dropPattern: /澳门新街坊|荔枝湾/ },
-  "nearby-to-uma": { boardingRegion: "1", boardingPattern: null, dropPattern: /澳大/ },
-  "nearby-to-university": { boardingRegion: "2", boardingPattern: null, dropPattern: /澳门新街坊|荔枝湾/ },
+  "university-to-uma": { option: "1-2", boardingPattern: /澳门新街坊|荔枝湾|横琴检察院（往口岸）/, dropPattern: /澳大/ },
+  "uma-to-university": { option: "2-1", boardingPattern: /澳大/, dropPattern: /澳门新街坊|荔枝湾/ },
+  "nearby-to-uma": { option: "1-2", boardingPattern: null, dropPattern: /澳大/ },
+  "nearby-to-university": { option: "2-1", boardingPattern: null, dropPattern: /澳门新街坊|荔枝湾/ },
 };
 
 function quickSelect(mode) {
   const preset = QUICK_PRESETS[mode];
   if (!state.data || !preset) return;
-  const boardingRegion = preset.boardingRegion;
   const useNearbyStops = !preset.boardingPattern;
 
   if (useNearbyStops && !state.userPosition) {
@@ -532,7 +535,7 @@ function quickSelect(mode) {
     requestLocation(true);
     return;
   }
-  setCurrentRegion(boardingRegion, false);
+  setCurrentOption(preset.option, false);
   if (useNearbyStops) {
     if (!state.nearbyStops.length) {
       els.locationHint.textContent = `附近 ${MAX_DISTANCE_KM} 公里内没有可上车的站点，请手动选择上车站点`;
@@ -911,8 +914,8 @@ function regionLabel(region) {
 }
 
 // 上下车规则：在澳门/珠海上车只能去横琴；在横琴上车可以去澳门或珠海
-function allowedDestinationRegions(region) {
-  return String(region) === "1" ? ["2", "3"] : ["1"];
+function defaultOptionForRegion(region) {
+  return { 1: "1-2", 2: "2-1", 3: "3-1" }[String(region)] || "1-2";
 }
 
 function destinationLabel(regions = state.destinationRegions) {

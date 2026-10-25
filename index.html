@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261025-label-name" />
+  <link rel="stylesheet" href="styles.css?v=20261025-direction-options" />
 </head>
 <body>
   <div class="page-shell">
@@ -92,20 +92,25 @@
           <span class="ai-badge"><span>✦</span> 定位判断</span>
         </div>
         <p class="section-description" id="regionReason">获取定位后自动判断，也可以手动切换</p>
-        <div class="direction-toggle" id="regionToggle" role="group" aria-label="当前所在区域">
-          <button type="button" data-region="1" class="direction-option direction-option--hengqin">
+        <div class="direction-toggle" id="regionToggle" role="group" aria-label="出行方向">
+          <button type="button" data-option="1-2" class="direction-option direction-option--hengqin">
             <span class="direction-option__flag">琴</span>
-            <span><strong>横琴</strong><small>横琴上车</small></span>
+            <span><strong>横琴</strong><small>前往澳门</small></span>
             <span class="direction-option__check">✓</span>
           </button>
-          <button type="button" data-region="2" class="direction-option direction-option--macau">
+          <button type="button" data-option="2-1" class="direction-option direction-option--macau">
             <span class="direction-option__flag">澳</span>
-            <span><strong>澳门</strong><small>澳门上车</small></span>
+            <span><strong>澳门</strong><small>前往横琴</small></span>
             <span class="direction-option__check">✓</span>
           </button>
-          <button type="button" data-region="3" class="direction-option direction-option--zhuhai">
+          <button type="button" data-option="1-3" class="direction-option direction-option--hengqin">
+            <span class="direction-option__flag">琴</span>
+            <span><strong>横琴</strong><small>前往珠海</small></span>
+            <span class="direction-option__check">✓</span>
+          </button>
+          <button type="button" data-option="3-1" class="direction-option direction-option--zhuhai">
             <span class="direction-option__flag">珠</span>
-            <span><strong>珠海</strong><small>珠海上车</small></span>
+            <span><strong>珠海</strong><small>前往横琴</small></span>
             <span class="direction-option__check">✓</span>
           </button>
         </div>
@@ -198,6 +203,6 @@
   </div>
 
   <script src="config.js?v=20260918-uncap1" defer></script>
-  <script src="app-v2.js?v=20261025-label-name" defer></script>
+  <script src="app-v2.js?v=20261025-direction-options" defer></script>
 </body>
 </html>
