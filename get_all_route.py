@@ -16,6 +16,8 @@ API_URL = "https://tqh.hengqin.gov.cn:8069/api/v1/route/get/"
 STOPS_API_URL = "https://tqh.hengqin.gov.cn:8069/api/v1/route/timetable/stops"
 SCHEDULE_API_URL = "https://tqh.hengqin.gov.cn:8069/api/v1/route/schedule/find"
 DEFAULT_LABEL_ID = 7
+# 除跨境通勤线（label 7）外，额外记录的境内线路标签
+DOMESTIC_LABEL_IDS = (3, 4, 5, 6, 8, 10, 11)
 MINUTES_PER_DAY = 24 * 60
 TIME_PATTERN = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 SYNC_DATE_PATTERN = re.compile(r'(const DATA_SYNC_DATE = )"[^"]*";')
@@ -71,24 +73,34 @@ def post_api(url: str, body: dict[str, Any], timeout: int, description: str) -> 
 	return payload
 
 
-def get_cross_border_routes(
+def get_routes_by_label(
 	label_id: int = DEFAULT_LABEL_ID,
 	timeout: int = DEFAULT_TIMEOUT,
 ) -> dict[str, Any]:
-	"""请求指定标签下的通琴班次并返回接口原始 JSON。"""
+	"""请求指定标签下的线路列表并返回接口原始 JSON。"""
 	if label_id < 0:
 		raise ValueError("label_id 不能为负数")
 	if timeout <= 0:
 		raise ValueError("timeout 必须大于 0")
 
-	payload = post_api(API_URL, {"label_id": label_id}, timeout, "班次")
+	payload = post_api(API_URL, {"label_id": label_id}, timeout, f"标签 {label_id} 线路列表")
 
 	api_message = payload.get("msg")
 	routes = payload.get("data")
 	if not isinstance(routes, list):
-		raise RouteApiError(f"接口未返回班次列表，msg={api_message!r}")
+		raise RouteApiError(f"标签 {label_id} 未返回线路列表，msg={api_message!r}")
 
 	return payload
+
+
+def stops_label_name(stops_payload: dict[str, Any]) -> str | None:
+	"""从站点接口响应中取出线路所属标签名称（如「夜间线」）。"""
+	stops_data = stops_payload.get("data")
+	if isinstance(stops_data, dict):
+		label_name = stops_data.get("label_name")
+		if isinstance(label_name, str) and label_name.strip():
+			return label_name.strip()
+	return None
 
 
 def normalize_date(value: Any) -> str | None:
@@ -400,13 +412,144 @@ def merge_processed_routes(
 	return merged
 
 
-def build_processed_payload(routes: list[dict[str, Any]]) -> dict[str, Any]:
-	"""组装最终写入 processed.json 的内容。"""
+def build_processed_payload(
+	cross_border: dict[str, Any],
+	domestic_labels: list[dict[str, Any]],
+) -> dict[str, Any]:
+	"""组装最终写入 processed.json 的内容。
+
+	`routes` 仍只放跨境通勤线（label 7），保持前端现有读取方式不变；
+	境内线路按标签记录在 `domestic_labels` 中，暂不参与前端展示。
+	"""
 	return {
-		"label_id": DEFAULT_LABEL_ID,
-		"label_name": "跨境通勤线",
-		"route_count": len(routes),
-		"routes": routes,
+		"label_id": cross_border["label_id"],
+		"label_name": cross_border["label_name"],
+		"route_count": cross_border["route_count"],
+		"routes": cross_border["routes"],
+		"domestic_labels": domestic_labels,
+	}
+
+
+def update_label(
+	label_id: int,
+	previous_label: dict[str, Any] | None,
+	warnings: list[str],
+	today: str,
+	verbose: bool,
+) -> dict[str, Any] | None:
+	"""抓取单个标签下的线路并按线路合并新旧数据。
+
+	返回该标签的数据；若线路列表获取失败且没有可沿用的旧数据，返回 None。
+	"""
+	previous_entries = (
+		previous_label.get("routes") if isinstance(previous_label, dict) else None
+	)
+	previous_by_route_id = group_entries_by_route_id(previous_entries)
+	previous_label_name = (
+		previous_label.get("label_name") if isinstance(previous_label, dict) else None
+	)
+
+	try:
+		routes_payload = get_routes_by_label(label_id)
+	except RouteApiError as exc:
+		if not previous_by_route_id:
+			print(
+				f"[label {label_id}] 获取线路列表失败且没有旧数据，已跳过: {exc}",
+				file=sys.stderr,
+			)
+			return None
+		print(
+			f"[label {label_id}] 获取线路列表失败，将沿用旧数据并清理过期日期: {exc}",
+			file=sys.stderr,
+		)
+		routes = [
+			{
+				"id": route_id,
+				"name": entries[0].get("route_name"),
+				"bus_id": entries[0].get("bus_id"),
+			}
+			for route_id, entries in previous_by_route_id.items()
+		]
+	else:
+		output_path = (
+			ROUTES_OUTPUT
+			if label_id == DEFAULT_LABEL_ID
+			else OUTPUT_DIR / f"label_{label_id}_routes.json"
+		)
+		save_json(routes_payload, output_path)
+		if verbose:
+			print_route_summary(routes_payload)
+
+		routes = routes_payload.get("data", [])
+		if not isinstance(routes, list):
+			print(f"[label {label_id}] 接口返回的 data 不是列表，已按空列表处理", file=sys.stderr)
+			routes = []
+
+	fresh_entries_by_route_id: dict[int, list[dict[str, Any]]] = {}
+	failed_route_ids: set[int] = set()
+	seen_label_names: dict[str, int] = {}
+
+	for index, route in enumerate(routes, start=1):
+		if not isinstance(route, dict) or not isinstance(route.get("id"), int):
+			print(f"[label {label_id}] 跳过第 {index} 条无效线路: {route!r}", file=sys.stderr)
+			continue
+		route_id = route["id"]
+
+		try:
+			schedule = get_route_schedule(route_id)
+			stops_payload = get_route_stops(route_id)
+		except (RouteApiError, ValueError, OSError) as exc:
+			failed_route_ids.add(route_id)
+			print(
+				f"[label {label_id}] 线路 {route_id} 获取失败，沿用旧数据并清理过期日期: {exc}",
+				file=sys.stderr,
+			)
+			continue
+
+		save_json(stops_payload, OUTPUT_DIR / f"route_{route_id}.json")
+		fresh_entries_by_route_id[route_id] = build_route_entries(
+			route, stops_payload, schedule, warnings
+		)
+		label_name = stops_label_name(stops_payload)
+		if label_name:
+			seen_label_names[label_name] = seen_label_names.get(label_name, 0) + 1
+
+		if verbose:
+			departure_text = (
+				"、".join(
+					f"{time_text}（{len(dates)} 天）"
+					for time_text, dates in schedule.items()
+				)
+				if schedule
+				else "暂无发车计划"
+			)
+			print(
+				f"[{index}/{len(routes)}] 线路 {route_id} 更新成功"
+				f"（发车时间：{departure_text}）"
+			)
+
+	merged_routes = merge_processed_routes(
+		routes,
+		fresh_entries_by_route_id,
+		previous_by_route_id,
+		failed_route_ids,
+		today,
+		warnings,
+	)
+	label_name = (
+		max(seen_label_names, key=seen_label_names.get)
+		if seen_label_names
+		else previous_label_name or f"线路 {label_id}"
+	)
+	print(
+		f"[label {label_id}] {label_name}: 成功 {len(fresh_entries_by_route_id)} 条线路，"
+		f"沿用旧数据 {len(failed_route_ids)} 条线路，共 {len(merged_routes)} 个班次"
+	)
+	return {
+		"label_id": label_id,
+		"label_name": label_name,
+		"route_count": len(merged_routes),
+		"routes": merged_routes,
 	}
 
 
@@ -419,88 +562,55 @@ def load_json(output_path: Path) -> Any | None:
 
 
 def run_update() -> int:
-	"""抓取全部线路，按线路与旧数据合并后写入 processed.json。"""
+	"""抓取跨境线与境内线，按线路与旧数据合并后写入 processed.json。"""
 	warnings: list[str] = []
 	today = today_in_beijing()
 
 	previous_payload = load_json(PROCESSED_OUTPUT)
-	previous_entries = (
-		previous_payload.get("routes") if isinstance(previous_payload, dict) else None
-	)
-	previous_by_route_id = group_entries_by_route_id(previous_entries)
+	if not isinstance(previous_payload, dict):
+		previous_payload = {}
 
-	try:
-		routes_payload = get_cross_border_routes()
-	except RouteApiError as exc:
-		if not previous_by_route_id:
-			raise
-		print(f"获取线路列表失败，将沿用旧数据并清理过期日期: {exc}", file=sys.stderr)
-		routes = [
-			{
-				"id": route_id,
-				"name": entries[0].get("route_name"),
-				"bus_id": entries[0].get("bus_id"),
-			}
-			for route_id, entries in previous_by_route_id.items()
-		]
-	else:
-		save_json(routes_payload, ROUTES_OUTPUT)
-		print_route_summary(routes_payload)
-		routes = routes_payload.get("data", [])
-		if not isinstance(routes, list):
-			raise RouteApiError("线路接口返回的 data 不是列表")
-
-	fresh_entries_by_route_id: dict[int, list[dict[str, Any]]] = {}
-	failed_route_ids: set[int] = set()
-
-	for index, route in enumerate(routes, start=1):
-		if not isinstance(route, dict) or not isinstance(route.get("id"), int):
-			print(f"跳过第 {index} 条无效线路: {route!r}", file=sys.stderr)
-			continue
-		route_id = route["id"]
-
-		try:
-			schedule = get_route_schedule(route_id)
-			stops_payload = get_route_stops(route_id)
-		except (RouteApiError, ValueError, OSError) as exc:
-			failed_route_ids.add(route_id)
-			print(
-				f"线路 {route_id} 获取失败，沿用旧数据并清理过期日期: {exc}",
-				file=sys.stderr,
-			)
-			continue
-
-		save_json(stops_payload, OUTPUT_DIR / f"route_{route_id}.json")
-		fresh_entries_by_route_id[route_id] = build_route_entries(
-			route, stops_payload, schedule, warnings
-		)
-		departure_text = (
-			"、".join(
-				f"{time_text}（{len(dates)} 天）" for time_text, dates in schedule.items()
-			)
-			if schedule
-			else "暂无发车计划"
-		)
-		print(f"[{index}/{len(routes)}] 线路 {route_id} 更新成功（发车时间：{departure_text}）")
-
-	merged_routes = merge_processed_routes(
-		routes,
-		fresh_entries_by_route_id,
-		previous_by_route_id,
-		failed_route_ids,
-		today,
+	cross_border = update_label(
+		DEFAULT_LABEL_ID,
+		previous_payload,
 		warnings,
+		today,
+		verbose=True,
 	)
-	processed_payload = build_processed_payload(merged_routes)
+	if cross_border is None:
+		raise RouteApiError(f"无法获取跨境通勤线（label {DEFAULT_LABEL_ID}）的线路列表")
+
+	previous_domestic = previous_payload.get("domestic_labels")
+	previous_domestic_by_label: dict[int, dict[str, Any]] = {}
+	if isinstance(previous_domestic, list):
+		for item in previous_domestic:
+			if isinstance(item, dict) and isinstance(item.get("label_id"), int):
+				previous_domestic_by_label[item["label_id"]] = item
+
+	domestic_labels: list[dict[str, Any]] = []
+	for label_id in DOMESTIC_LABEL_IDS:
+		label_data = update_label(
+			label_id,
+			previous_domestic_by_label.get(label_id),
+			warnings,
+			today,
+			verbose=False,
+		)
+		if label_data is not None:
+			domestic_labels.append(label_data)
+
+	processed_payload = build_processed_payload(cross_border, domestic_labels)
 
 	for warning in warnings:
 		print(f"提示: {warning}", file=sys.stderr)
 	save_json(processed_payload, PROCESSED_OUTPUT)
+
+	domestic_entries = sum(item["route_count"] for item in domestic_labels)
 	print(
-		f"更新完成：成功 {len(fresh_entries_by_route_id)} 条线路，"
-		f"沿用旧数据 {len(failed_route_ids)} 条线路；"
-		f"{PROCESSED_OUTPUT} 共 {processed_payload['route_count']} 个班次"
+		f"更新完成：跨境通勤线 {cross_border['route_count']} 个班次；"
+		f"境内线 {len(domestic_labels)} 个标签 / {domestic_entries} 个班次"
 	)
+	print(f"{PROCESSED_OUTPUT} 共 {cross_border['route_count'] + domestic_entries} 个班次")
 	print(f"原始响应目录: {OUTPUT_DIR}")
 
 	if update_sync_date(CONFIG_PATH, today):
