@@ -128,8 +128,6 @@ function bindEvents() {
     const expanded = toggle.getAttribute("aria-expanded") === "true";
     const nextExpanded = !expanded;
     toggle.setAttribute("aria-expanded", String(nextExpanded));
-    toggle.querySelector("span:last-child").textContent = nextExpanded ? "−" : "+";
-    card?.classList.toggle("departure-card--expanded", nextExpanded);
     const item = renderedDepartures[Number(card?.dataset.departureIndex)];
     if (item) {
       const uid = routeKey(item.route);
@@ -138,7 +136,10 @@ function bindEvents() {
     }
     if (!details) return;
     if (nextExpanded) renderTimeline(details);
-    details.hidden = !nextExpanded;
+    details.inert = !nextExpanded;
+    details.setAttribute("aria-hidden", String(!nextExpanded));
+    if (nextExpanded) void details.offsetHeight;
+    card?.classList.toggle("departure-card--expanded", nextExpanded);
   });
 }
 
@@ -355,10 +356,14 @@ function stationCardHtml(stop, closest) {
 function selectStop(stop, scroll) {
   state.selectedStops = [stop];
   updateStationPickerValue();
-  renderNearbyStations();
+  syncNearbySelection();
+  syncPickerSelection(els.stationPickerOptions, "data-picker-stop", state.selectedStops);
   computeAvailableDropOffStops();
   renderDepartures();
-  if (scroll) document.querySelector(".departures-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (scroll) {
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    document.querySelector(".departures-section")?.scrollIntoView({ behavior, block: "start" });
+  }
 }
 
 function clearSelectedStop() {
@@ -375,18 +380,40 @@ function clearSelectedStop() {
 function toggleStationPicker() {
   const isOpen = els.stationPickerButton.getAttribute("aria-expanded") === "true";
   if (isOpen) closeStationPicker();
-  else {
-    els.stationPicker.classList.add("is-open");
-    els.stationPickerButton.setAttribute("aria-expanded", "true");
-    els.stationPickerMenu.hidden = false;
-    els.stationPickerSearch.focus();
-  }
+  else openPickerMenu(els.stationPicker, els.stationPickerButton, els.stationPickerMenu, els.stationPickerSearch);
 }
 
 function closeStationPicker() {
-  els.stationPicker.classList.remove("is-open");
-  els.stationPickerButton.setAttribute("aria-expanded", "false");
-  els.stationPickerMenu.hidden = true;
+  closePickerMenu(els.stationPicker, els.stationPickerButton, els.stationPickerMenu);
+}
+
+const PICKER_CLOSE_DELAY = 240;
+
+function openPickerMenu(picker, button, menu, search) {
+  clearTimeout(menu._hideTimer);
+  picker.classList.remove("is-closing");
+  picker.classList.add("is-open");
+  button.setAttribute("aria-expanded", "true");
+  menu.hidden = false;
+  requestAnimationFrame(() => {
+    if (button.getAttribute("aria-expanded") !== "true") return;
+    menu.classList.add("is-shown");
+    search?.focus({ preventScroll: true });
+  });
+}
+
+function closePickerMenu(picker, button, menu) {
+  if (button.getAttribute("aria-expanded") !== "true") return;
+  picker.classList.remove("is-open");
+  picker.classList.add("is-closing");
+  button.setAttribute("aria-expanded", "false");
+  menu.classList.remove("is-shown");
+  clearTimeout(menu._hideTimer);
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  menu._hideTimer = setTimeout(() => {
+    menu.hidden = true;
+    picker.classList.remove("is-closing");
+  }, reduceMotion ? 0 : PICKER_CLOSE_DELAY);
 }
 
 function toggleSelectedStop(stop) {
@@ -395,10 +422,22 @@ function toggleSelectedStop(stop) {
     ? state.selectedStops.filter((item) => item.key !== stop.key)
     : [...state.selectedStops, stop];
   updateStationPickerValue();
-  renderStationPickerOptions(els.stationPickerSearch.value);
-  renderNearbyStations();
+  syncPickerSelection(els.stationPickerOptions, "data-picker-stop", state.selectedStops);
+  syncNearbySelection();
   computeAvailableDropOffStops();
   renderDepartures();
+}
+
+function syncNearbySelection() {
+  document.querySelectorAll(".station-card[data-nearby-stop]").forEach((card) => {
+    card.classList.toggle("is-selected", state.selectedStops.some((stop) => stop.key === card.dataset.nearbyStop));
+  });
+}
+
+function syncPickerSelection(container, attribute, selectedStops) {
+  container.querySelectorAll(`[${attribute}]`).forEach((option) => {
+    option.classList.toggle("is-selected", selectedStops.some((stop) => stop.key === option.getAttribute(attribute)));
+  });
 }
 
 function updateStationPickerValue() {
@@ -422,18 +461,11 @@ function renderStationPickerOptions(query = "") {
 function toggleDropOffPicker() {
   const isOpen = els.dropOffPickerButton.getAttribute("aria-expanded") === "true";
   if (isOpen) closeDropOffPicker();
-  else {
-    els.dropOffPicker.classList.add("is-open");
-    els.dropOffPickerButton.setAttribute("aria-expanded", "true");
-    els.dropOffPickerMenu.hidden = false;
-    els.dropOffPickerSearch.focus();
-  }
+  else openPickerMenu(els.dropOffPicker, els.dropOffPickerButton, els.dropOffPickerMenu, els.dropOffPickerSearch);
 }
 
 function closeDropOffPicker() {
-  els.dropOffPicker.classList.remove("is-open");
-  els.dropOffPickerButton.setAttribute("aria-expanded", "false");
-  els.dropOffPickerMenu.hidden = true;
+  closePickerMenu(els.dropOffPicker, els.dropOffPickerButton, els.dropOffPickerMenu);
 }
 
 function computeAvailableDropOffStops() {
@@ -484,7 +516,7 @@ function toggleSelectedDropOffStop(stop) {
     ? state.selectedDropOffStops.filter((item) => item.key !== stop.key)
     : [...state.selectedDropOffStops, stop];
   updateDropOffPickerValue();
-  renderDropOffPickerOptions(els.dropOffPickerSearch.value);
+  syncPickerSelection(els.dropOffPickerOptions, "data-dropoff-stop", state.selectedDropOffStops);
   renderDepartures();
 }
 
@@ -819,10 +851,12 @@ function departureHtml(item, index, expanded, now) {
       <div class="departure-card__time${item.boardingStops.length > 1 ? " departure-card__time--multi" : ""}">${item.route.labelName ? `<small class="departure-card__label">${escapeHtml(item.route.labelName)}</small>` : ""}<strong>${timeLabel}</strong><small>${escapeHtml(item.route.route_name)}</small></div>
       <div class="departure-card__route"><strong data-live="status">${escapeHtml(departureStatusLabel(item, now))}</strong><span>${routePath}</span><span class="departure-card__boarding">可上车站点：${boardingStops}</span></div>
       <div class="departure-card__countdown"><strong data-live="countdown">${escapeHtml(departureCountdownLabel(item))}</strong><small>${item.isEntry ? "口岸上车" : "本站发车"}</small></div>
-      <button class="route-toggle" type="button" data-route-toggle aria-expanded="${expanded}" aria-controls="${detailsId}"><span>站点列表</span><span>${expanded ? "−" : "+"}</span></button>
+      <button class="route-toggle" type="button" data-route-toggle aria-expanded="${expanded}" aria-controls="${detailsId}"><span>站点列表</span><span class="route-toggle__icon" aria-hidden="true"></span></button>
     </div>
-    <div class="route-details" id="${detailsId}"${expanded ? ' data-rendered="1"' : " hidden"}>
-      ${expanded ? timelineHtml(item) : ""}
+    <div class="route-details" id="${detailsId}" aria-hidden="${expanded ? "false" : "true"}"${expanded ? ' data-rendered="1"' : " inert"}>
+      <div class="route-details__inner">
+        <div class="route-details__body">${expanded ? timelineHtml(item) : ""}</div>
+      </div>
     </div>
   </article>`;
 }
@@ -835,10 +869,11 @@ function timelineHtml(item) {
 
 function renderTimeline(details) {
   if (details.dataset.rendered === "1") return;
+  const body = details.querySelector(".route-details__body");
   const card = details.closest(".departure-card");
   const item = renderedDepartures[Number(card?.dataset.departureIndex)];
-  if (!item) return;
-  details.innerHTML = timelineHtml(item);
+  if (!item || !body) return;
+  body.innerHTML = timelineHtml(item);
   details.dataset.rendered = "1";
 }
 

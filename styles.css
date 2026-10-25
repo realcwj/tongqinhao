@@ -116,6 +116,11 @@ button {
   cursor: pointer;
 }
 a { color: inherit; text-decoration: none; }
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
 svg { display: block; }
 [hidden] { display: none !important; }
 
@@ -250,6 +255,26 @@ svg { display: block; }
 @keyframes orbDriftC {
   from { transform: translate3d(-3%, 2%, 0) scale(1.02); }
   to { transform: translate3d(4%, -4%, 0) scale(1.09); }
+}
+
+@keyframes uiRise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes checkPop {
+  from { opacity: 0; transform: translateX(-2px) scale(.5); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes softIn {
+  from { opacity: .45; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }
 
 .page-shell {
@@ -1078,7 +1103,30 @@ h2 {
     0 14px 26px -24px rgba(66, 84, 86, .22);
   text-align: left;
   overflow: hidden;
-  transition: transform .22s var(--ease), border-color .22s, box-shadow .22s;
+  transition: transform .22s var(--ease), border-color .22s, box-shadow .22s, color .22s;
+}
+
+.direction-option > * {
+  position: relative;
+  z-index: 1;
+}
+
+.direction-option::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: var(--selected-fill);
+  opacity: 0;
+  transform: scale(.985);
+  pointer-events: none;
+  transition: opacity .28s var(--ease), transform .32s var(--ease);
+}
+
+.direction-option.is-selected::after {
+  opacity: 1;
+  transform: none;
 }
 
 .direction-option--macau {
@@ -1133,7 +1181,6 @@ h2 {
 .direction-option.is-selected {
   border-color: var(--selected-fill);
   color: var(--selected-text);
-  background: var(--selected-fill);
   box-shadow:
     inset 0 1px 0 rgba(239, 239, 213, .35),
     0 20px 36px -24px var(--selected-shadow);
@@ -1173,6 +1220,7 @@ h2 {
   box-shadow: inset 0 1px 0 #fff;
   font-size: 18px;
   font-weight: 800;
+  transition: color .24s var(--ease), border-color .24s, background-color .24s;
 }
 
 .direction-option--macau .direction-option__flag {
@@ -1193,12 +1241,14 @@ h2 {
 .direction-option strong {
   font-size: 14px;
   white-space: nowrap;
+  transition: color .24s var(--ease);
 }
 
 .direction-option small {
   margin-top: 3px;
   color: var(--muted);
   font-size: 10.5px;
+  transition: color .24s var(--ease);
 }
 
 .direction-option__check {
@@ -1253,7 +1303,30 @@ h2 {
     0 14px 26px -24px rgba(136, 136, 136, .22);
   text-align: left;
   overflow: hidden;
-  transition: transform .24s var(--ease), border-color .24s, box-shadow .24s;
+  transition: transform .24s var(--ease), border-color .24s, box-shadow .24s, color .24s;
+}
+
+.station-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.station-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: var(--selected-fill);
+  opacity: 0;
+  transform: scale(.985);
+  pointer-events: none;
+  transition: opacity .28s var(--ease), transform .32s var(--ease);
+}
+
+.station-card.is-selected::after {
+  opacity: 1;
+  transform: none;
 }
 
 .station-card[data-region="2"],
@@ -1281,7 +1354,6 @@ h2 {
 .station-card.is-selected {
   border-color: var(--selected-fill);
   color: var(--selected-text);
-  background: var(--selected-fill);
   box-shadow:
     inset 0 1px 0 rgba(239, 239, 213, .32),
     0 20px 34px -26px var(--selected-shadow);
@@ -1301,6 +1373,7 @@ h2 {
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
+  transition: color .24s var(--ease);
 }
 
 .station-kind::before {
@@ -1319,6 +1392,7 @@ h2 {
   font-weight: 800;
   letter-spacing: .05em;
   white-space: nowrap;
+  transition: color .24s var(--ease);
 }
 
 .station-card h3 {
@@ -1330,6 +1404,7 @@ h2 {
   font-weight: 700;
   line-height: 1.45;
   letter-spacing: -.02em;
+  transition: color .24s var(--ease);
 }
 
 .station-card.is-selected h3,
@@ -1383,7 +1458,8 @@ h2 {
   padding: 0 2px;
 }
 
-.manual-station:has(.station-picker.is-open) { z-index: 6; }
+.manual-station:has(.station-picker.is-open),
+.manual-station:has(.station-picker.is-closing) { z-index: 6; }
 
 .manual-station--dropoff { margin-top: 12px; }
 
@@ -1427,7 +1503,7 @@ h2 {
   font-size: 12px;
   text-align: left;
   touch-action: manipulation;
-  transition: border-color .2s, background .2s, box-shadow .2s;
+  transition: border-color .2s, background .2s, box-shadow .2s, transform .16s var(--ease);
 }
 
 .station-picker__button > span:first-child {
@@ -1482,6 +1558,18 @@ h2 {
     inset 0 0 0 1px rgba(255, 255, 255, .45);
   backdrop-filter: blur(32px) saturate(160%) brightness(1.03);
   -webkit-backdrop-filter: blur(32px) saturate(160%) brightness(1.03);
+  opacity: 0;
+  transform: translateY(-7px) scale(.985);
+  transform-origin: top right;
+  pointer-events: none;
+  transition: opacity .18s var(--ease), transform .24s var(--ease);
+}
+
+.station-picker__menu.is-shown {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition: opacity .22s var(--ease), transform .3s var(--ease);
 }
 
 .station-picker__search {
@@ -1541,7 +1629,7 @@ h2 {
   font-size: 11.5px;
   text-align: left;
   touch-action: manipulation;
-  transition: color .16s;
+  transition: color .18s, background-color .2s;
 }
 
 .station-picker__option:hover { background: rgba(64, 163, 130, .08); }
@@ -1562,6 +1650,7 @@ h2 {
   border-radius: 5px;
   color: transparent;
   font-size: 10px;
+  transition: color .18s, border-color .18s, background-color .18s;
 }
 
 .station-picker__option.is-selected .station-picker__check {
@@ -1776,6 +1865,13 @@ h2 {
 
 .departure-card--entry .departure-card__countdown small { color: var(--gold); }
 
+.departure-card.departure-card--expanded {
+  border-color: var(--gold-border);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 24px 42px -32px var(--selected-shadow);
+}
+
 .route-toggle {
   display: inline-flex;
   align-items: center;
@@ -1789,7 +1885,7 @@ h2 {
   font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
-  transition: color .2s, border-color .2s, background .2s;
+  transition: color .2s, border-color .2s, background-color .2s, transform .18s var(--ease);
 }
 
 .route-toggle:hover {
@@ -1798,16 +1894,73 @@ h2 {
   background: rgba(255, 255, 255, .72);
 }
 
-.route-toggle span:last-child {
+.route-toggle[aria-expanded="true"] {
+  color: var(--ink);
+  border-color: var(--gold-border);
+  background: rgba(253, 239, 205, .68);
+}
+
+.route-toggle__icon {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  flex: none;
   color: var(--gold);
-  font-size: 16px;
-  line-height: 1;
+}
+
+.route-toggle__icon::before,
+.route-toggle__icon::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+  transition: transform .3s var(--ease), opacity .22s;
+}
+
+.route-toggle__icon::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.route-toggle[aria-expanded="true"] .route-toggle__icon::after {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(90deg) scaleX(0);
 }
 
 .route-details {
+  display: grid;
+  grid-template-rows: 0fr;
+  border-top: 1px solid transparent;
+  background: transparent;
+  transition: grid-template-rows .46s var(--ease), border-color .25s;
+}
+
+.route-details__inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.route-details__body {
   padding: 18px 20px 22px 124px;
-  border-top: 1px solid rgba(84, 104, 106, .1);
   background: rgba(255, 255, 255, .18);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity .24s var(--ease), transform .34s var(--ease);
+}
+
+.departure-card--expanded .route-details {
+  grid-template-rows: 1fr;
+  border-top-color: rgba(84, 104, 106, .1);
+}
+
+.departure-card--expanded .route-details__body {
+  opacity: 1;
+  transform: none;
+  transition-delay: .06s;
 }
 
 .route-timeline {
@@ -2078,7 +2231,7 @@ h2 {
   font-size: 10.5px;
   font-weight: 700;
   white-space: nowrap;
-  transition: color .2s, box-shadow .2s;
+  transition: color .2s, background-color .22s, box-shadow .24s, transform .16s var(--ease);
 }
 
 .route-filters button:hover {
@@ -2095,10 +2248,12 @@ h2 {
 }
 
 .route-filters button.is-selected::before {
-  content: "✓";
+  content: "\2713";
+  display: inline-block;
   margin-right: 5px;
   font-size: 9px;
   font-weight: 800;
+  animation: checkPop .26s var(--ease) both;
 }
 
 .route-results-heading {
@@ -2125,6 +2280,10 @@ h2 {
 .route-directory {
   display: grid;
   gap: 11px;
+}
+
+.route-directory.is-refreshing {
+  animation: softIn .3s var(--ease) both;
 }
 
 .directory-card {
@@ -2166,9 +2325,6 @@ h2 {
 
 .directory-card.is-open {
   border-color: var(--accent-border);
-  background:
-    radial-gradient(120% 160% at 100% 0%, var(--accent-soft), transparent 60%),
-    linear-gradient(150deg, rgba(255, 255, 255, .8), rgba(255, 255, 255, .52));
   box-shadow:
     inset 0 1px 0 #fff,
     0 22px 42px -32px var(--accent);
@@ -2314,6 +2470,7 @@ h2 {
 }
 
 .directory-card__expand {
+  position: relative;
   display: grid;
   place-items: center;
   width: 26px;
@@ -2323,9 +2480,26 @@ h2 {
   color: var(--gold);
   background: rgba(255, 255, 255, .42);
   box-shadow: inset 0 1px 0 #fff;
-  font-size: 16px;
   line-height: 1;
-  transition: color .2s, background .2s, border-color .2s;
+  transition: color .22s, background-color .22s, border-color .22s;
+}
+
+.directory-card__expand::before,
+.directory-card__expand::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+  transition: transform .3s var(--ease), opacity .22s;
+}
+
+.directory-card__expand::after {
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .directory-card.is-open .directory-card__expand {
@@ -2334,10 +2508,41 @@ h2 {
   background: var(--gold-bright);
 }
 
+.directory-card.is-open .directory-card__expand::after {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(90deg) scaleX(0);
+}
+
 .directory-card__details {
+  display: grid;
+  grid-template-rows: 0fr;
+  border-top: 1px solid transparent;
+  background: transparent;
+  transition: grid-template-rows .5s var(--ease), border-color .25s;
+}
+
+.directory-card__details-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.directory-card__details-body {
   padding: 19px 26px 24px 118px;
-  border-top: 1px solid rgba(84, 104, 106, .1);
   background: rgba(255, 255, 255, .2);
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity .26s var(--ease), transform .4s var(--ease);
+}
+
+.directory-card.is-open .directory-card__details {
+  grid-template-rows: 1fr;
+  border-top-color: rgba(84, 104, 106, .1);
+}
+
+.directory-card.is-open .directory-card__details-body {
+  opacity: 1;
+  transform: none;
+  transition-delay: .07s;
 }
 
 .directory-route-head {
@@ -2552,7 +2757,7 @@ h2 {
     width: 100%;
   }
 
-  .route-details { padding: 17px 14px 19px; }
+  .route-details__body { padding: 17px 14px 19px; }
 
   .footer {
     align-items: flex-start;
@@ -2588,7 +2793,7 @@ h2 {
   .directory-card__meta { display: none; }
   .directory-card__expand { grid-column: 3; grid-row: 1; }
 
-  .directory-card__details { padding: 17px 14px 22px; }
+  .directory-card__details-body { padding: 17px 14px 22px; }
 
   .ambient__orb { animation: none; }
 
@@ -2627,11 +2832,62 @@ h2 {
   .ai-badge { padding: 5px 9px; font-size: 9px; }
 }
 
+/* ============================================================
+   动效
+   ============================================================ */
+
+.topbar {
+  animation: uiRise .46s var(--ease) both;
+}
+
+.hero__content,
+.routes-hero__content {
+  animation: uiRise .56s var(--ease) .07s both;
+}
+
+.main-content > .section-block {
+  animation: uiRise .52s var(--ease) both;
+}
+
+.main-content > .section-block:nth-child(2) { animation-delay: .1s; }
+.main-content > .section-block:nth-child(3) { animation-delay: .16s; }
+.main-content > .section-block:nth-child(4) { animation-delay: .22s; }
+
+.routes-main > .route-toolbar {
+  animation: uiRise .46s var(--ease) .08s both;
+}
+
+.route-results-heading {
+  animation: uiRise .46s var(--ease) .13s both;
+}
+
+.manual-station--dropoff:not([hidden]) {
+  animation: panelIn .34s var(--ease) both;
+}
+
+.directory-card__summary {
+  transition: transform .16s var(--ease), background-color .2s;
+}
+
+:is(
+  .quick-option,
+  .direction-option,
+  .station-card,
+  .route-toggle,
+  .route-filters button,
+  .station-picker__button,
+  .location-button,
+  .routes-button,
+  .directory-card__summary
+):active {
+  transform: scale(.985);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     scroll-behavior: auto !important;
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
+    animation: none !important;
+    transition-delay: 0s !important;
     transition-duration: .01ms !important;
   }
 }

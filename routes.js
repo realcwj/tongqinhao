@@ -24,6 +24,7 @@ async function init() {
     state.filter = button.dataset.filter;
     els.filters.forEach((item) => item.classList.toggle("is-selected", item === button));
     renderRoutes();
+    animateDirectory();
   }));
   els.directory.addEventListener("click", onDirectoryClick);
 
@@ -95,6 +96,12 @@ function renderRoutes() {
   els.count.textContent = `${routes.length} / ${state.routes.length} 条`;
   els.empty.hidden = routes.length > 0;
   els.directory.innerHTML = routes.map((route) => routeCardHtml(route, now)).join("");
+}
+
+function animateDirectory() {
+  els.directory.classList.remove("is-refreshing");
+  void els.directory.offsetWidth;
+  els.directory.classList.add("is-refreshing");
 }
 
 // 距当前时间最近的实际发车排在最前；暂无发车计划的排最后
@@ -190,11 +197,12 @@ function routeCardHtml(route, now) {
       <span class="direction-chip direction-chip--${route.firstRegion}">${directionText}</span>
       <span class="vehicle-chip ${chip.tone}"><strong>${escapeHtml(chip.label)}</strong><small>${escapeHtml(chip.detail)}</small></span>
       <span class="directory-card__meta"><strong>${route.stops.length}</strong><small>站</small></span>
-      <span class="directory-card__expand" aria-hidden="true">+</span>
+      <span class="directory-card__expand" aria-hidden="true"></span>
     </button>
-    <div class="directory-card__details" id="${detailsId}" hidden>
-      <div class="directory-route-head"><span>线路编号 ${route.id}</span><strong>${escapeHtml(rangeText)}</strong></div>
-      <ol class="directory-timeline">${route.stops.map((stop, index) => stopHtml(stop, index, route.stops.length)).join("")}</ol>
+    <div class="directory-card__details" id="${detailsId}" data-range="${escapeHtml(rangeText)}" aria-hidden="true" inert>
+      <div class="directory-card__details-inner">
+        <div class="directory-card__details-body"></div>
+      </div>
     </div>
   </article>`;
 }
@@ -212,11 +220,27 @@ function stopHtml(stop, index, total) {
 function onDirectoryClick(event) {
   const button = event.target.closest("[data-route-id]");
   if (!button) return;
+  const card = button.closest(".directory-card");
   const details = document.querySelector(`#${CSS.escape(button.getAttribute("aria-controls"))}`);
   const expanded = button.getAttribute("aria-expanded") === "true";
-  button.setAttribute("aria-expanded", String(!expanded));
-  button.querySelector(".directory-card__expand").textContent = expanded ? "+" : "−";
-  if (details) details.hidden = expanded;
+  const nextExpanded = !expanded;
+  if (nextExpanded) renderDirectoryDetails(details, button.dataset.routeId);
+  button.setAttribute("aria-expanded", String(nextExpanded));
+  if (!details) return;
+  details.inert = !nextExpanded;
+  details.setAttribute("aria-hidden", String(!nextExpanded));
+  if (nextExpanded) void details.offsetHeight;
+  card?.classList.toggle("is-open", nextExpanded);
+}
+
+function renderDirectoryDetails(details, routeId) {
+  if (!details || details.dataset.rendered === "1") return;
+  const route = state.routes.find((item) => routeKey(item) === routeId);
+  const body = details.querySelector(".directory-card__details-body");
+  if (!route || !body) return;
+  body.innerHTML = `<div class="directory-route-head"><span>线路编号 ${route.id}</span><strong>${escapeHtml(details.dataset.range || "")}</strong></div>
+    <ol class="directory-timeline">${route.stops.map((stop, index) => stopHtml(stop, index, route.stops.length)).join("")}</ol>`;
+  details.dataset.rendered = "1";
 }
 
 function vehicleStatus(stops, now) {
