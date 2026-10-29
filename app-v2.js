@@ -555,18 +555,27 @@ function stopKeyFromRaw(stop) {
   return `${stop.region}|${cleanStopName(stop.name)}`;
 }
 
-// 快速选择预设：option 为出行方向（起点-终点）；boardingPattern 为 null 时，上车点取当前方向内的附近站点
+// 快速选择预设：option 为出行方向（起点-终点）；boardingPattern 为 null 时上车点取附近站点；portBoarding 表示只选口岸上车站点
 const QUICK_PRESETS = {
   "university-to-uma": { option: "1-2", boardingPattern: /澳门新街坊|荔枝湾|横琴检察院（往口岸）/, dropPattern: /澳大/ },
   "uma-to-university": { option: "2-1", boardingPattern: /澳大/, dropPattern: /澳门新街坊|荔枝湾/ },
   "nearby-to-uma": { option: "1-2", boardingPattern: null, dropPattern: /澳大/ },
   "nearby-to-university": { option: "2-1", boardingPattern: null, dropPattern: /澳门新街坊|荔枝湾/ },
+  "port-to-macau": { option: "1-2", portBoarding: true },
+  "port-to-hengqin": { option: "2-1", portBoarding: true },
 };
+
+// 口岸站（跨境线进入对岸后的首站）：按区域与方向结构判定，不依赖站名
+function portBoardingStops() {
+  const directions = allowedDirections();
+  return state.availableStops.filter((stop) => state.destinationRegions.includes(stop.region)
+    && directions.some((direction) => stop.entryBoardingDirections.has(direction)));
+}
 
 function quickSelect(mode) {
   const preset = QUICK_PRESETS[mode];
   if (!state.data || !preset) return;
-  const useNearbyStops = !preset.boardingPattern;
+  const useNearbyStops = !preset.boardingPattern && !preset.portBoarding;
 
   if (useNearbyStops && !state.userPosition) {
     els.locationHint.textContent = "「附近」快速选择需要定位：请允许定位权限或点击「刷新当前位置」后重试";
@@ -574,7 +583,13 @@ function quickSelect(mode) {
     return;
   }
   setCurrentOption(preset.option, false);
-  if (useNearbyStops) {
+  if (preset.portBoarding) {
+    state.selectedStops = portBoardingStops();
+    if (!state.selectedStops.length) {
+      els.locationHint.textContent = "当前方向没有可上车的口岸站点，请手动选择上车站点";
+      return;
+    }
+  } else if (useNearbyStops) {
     if (!state.nearbyStops.length) {
       els.locationHint.textContent = `附近 ${MAX_DISTANCE_KM} 公里内没有可上车的站点，请手动选择上车站点`;
       return;
@@ -583,9 +598,10 @@ function quickSelect(mode) {
   } else {
     state.selectedStops = state.availableStops.filter((stop) => preset.boardingPattern.test(stop.name));
   }
-  state.selectedDropOffStops = state.stops.filter((stop) =>
-    state.destinationRegions.includes(stop.region) && preset.dropPattern.test(stop.name)
-  );
+  // 下车站：预设了 dropPattern 才预选，否则保持默认全部站点
+  state.selectedDropOffStops = preset.dropPattern
+    ? state.stops.filter((stop) => state.destinationRegions.includes(stop.region) && preset.dropPattern.test(stop.name))
+    : [];
   updateStationPickerValue();
   renderStationPickerOptions();
   syncNearbySelection();
